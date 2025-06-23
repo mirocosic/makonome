@@ -29,8 +29,8 @@ jobs:
     - name: Set Build Number
       run: |
         buildNumber=${{ github.run_number }}
-        /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $buildNumber" "makonome/Info.plist" 2>/dev/null || 
-        /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $buildNumber" "makonome/Info.plist"
+        # Update CURRENT_PROJECT_VERSION in the project file
+        sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*/CURRENT_PROJECT_VERSION = $buildNumber/g" makonome.xcodeproj/project.pbxproj
         echo "Build number set to: $buildNumber"
     
     - name: Build
