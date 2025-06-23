@@ -58,13 +58,15 @@ jobs:
         xcodebuild test-without-building -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=$device"
     
     - name: Archive (Release builds only)
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.ENABLE_ARCHIVE == 'true'
       run: |
+        mkdir -p build
         xcodebuild -project makonome.xcodeproj \
           -scheme makonome \
           -configuration Release \
           -destination 'generic/platform=iOS' \
           -archivePath $PWD/build/makonome.xcarchive \
+          -allowProvisioningUpdates \
           archive
     
     # Uncomment when ready to deploy
