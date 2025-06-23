@@ -71,6 +71,28 @@
 		};
 /* End PBXFrameworksBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		4E4B20BD2E09A2240022F1A5 /* Auto Increment Build Number */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Auto Increment Build Number";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "buildNumber=$(/usr/libexec/PlistBuddy -c \"Print CFBundleVersion\" \"$INFOPLIST_FILE\")\nbuildNumber=$(($buildNumber + 1))\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $buildNumber\" \"$INFOPLIST_FILE\"\necho \"Build number incremented to: $buildNumber\"";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXGroup section */
 		4E4B20872E09A2220022F1A5 = {
 			isa = PBXGroup;
@@ -99,6 +121,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 4E4B20B42E09A2230022F1A5 /* Build configuration list for PBXNativeTarget "makonome" */;
 			buildPhases = (
+				4E4B20BD2E09A2240022F1A5 /* Auto Increment Build Number */,
 				4E4B208C2E09A2220022F1A5 /* Sources */,
 				4E4B208D2E09A2220022F1A5 /* Frameworks */,
 				4E4B208E2E09A2220022F1A5 /* Resources */,
