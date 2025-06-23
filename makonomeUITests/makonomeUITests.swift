@@ -73,9 +73,7 @@ final class makonomeUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["00:00.00"].exists)
         
         // Check if "Previous Times" section appeared
-        if app.staticTexts["Previous Times"].exists {
-            XCTAssertTrue(app.staticTexts["Previous Times"].exists)
-        }
+        XCTAssertTrue(app.staticTexts["Previous Times"].exists)
     }
 
     @MainActor
