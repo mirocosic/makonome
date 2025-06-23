@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "makonome-v1.png",
+      "filename" : "makonome-v1-min.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "makonome-v1-datk.png",
+      "filename" : "makonome-v1-datk-min.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
