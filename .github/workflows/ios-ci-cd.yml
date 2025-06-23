@@ -1,0 +1,64 @@
+name: iOS CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+    
+    - name: Set Build Number
+      run: |
+        buildNumber=${{ github.run_number }}
+        /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $buildNumber" "makonome/Info.plist" 2>/dev/null || 
+        /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $buildNumber" "makonome/Info.plist"
+        echo "Build number set to: $buildNumber"
+    
+    - name: Build and Test
+      run: |
+        xcodebuild test -project makonome.xcodeproj \
+          -scheme makonome \
+          -destination 'platform=iOS Simulator,name=iPhone 15'
+    
+    - name: Archive (Release builds only)
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        xcodebuild -project makonome.xcodeproj \
+          -scheme makonome \
+          -configuration Release \
+          -destination 'generic/platform=iOS' \
+          -archivePath $PWD/build/makonome.xcarchive \
+          archive
+    
+    # Uncomment when ready to deploy
+    # - name: Export IPA
+    #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    #   run: |
+    #     xcodebuild -exportArchive \
+    #       -archivePath $PWD/build/makonome.xcarchive \
+    #       -exportPath $PWD/build \
+    #       -exportOptionsPlist ExportOptions.plist
+    
+    # - name: Upload to TestFlight
+    #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    #   env:
+    #     APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+    #     APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+    #     APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+    #   run: |
+    #     xcrun altool --upload-app -f build/makonome.ipa \
+    #       --type ios \
+    #       --apiKey $APP_STORE_CONNECT_API_KEY_ID \
+    #       --apiIssuer $APP_STORE_CONNECT_API_ISSUER_ID
