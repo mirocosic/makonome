@@ -27,6 +27,9 @@ final class makonomeUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
         
+        // Navigate to Stopwatch tab
+        app.tabBars.buttons["Stopwatch"].tap()
+        
         // Find the Start/Stop button
         let startButton = app.buttons["Start"]
         let stopButton = app.buttons["Stop"]
@@ -55,6 +58,9 @@ final class makonomeUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
         
+        // Navigate to Stopwatch tab
+        app.tabBars.buttons["Stopwatch"].tap()
+        
         // Check that initial UI elements exist
         XCTAssertTrue(app.staticTexts["Stopwatch"].exists)
         XCTAssertTrue(app.staticTexts["00:00.00"].exists)
@@ -81,6 +87,9 @@ final class makonomeUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
         
+        // Navigate to Stopwatch tab
+        app.tabBars.buttons["Stopwatch"].tap()
+        
         // Initially no "Previous Times" should be visible
         XCTAssertFalse(app.staticTexts["Previous Times"].exists)
         
@@ -105,6 +114,137 @@ final class makonomeUITests: XCTestCase {
         
         // Timer should reset to 00:00.00 after each stop
         XCTAssertTrue(app.staticTexts["00:00.00"].exists)
+    }
+    
+    // MARK: - Metronome UI Tests
+    
+    @MainActor
+    func testMetronomeDefaultScreen() throws {
+        let app = XCUIApplication()
+        app.launch()
+        
+        // App should launch with Metronome tab selected by default
+        XCTAssertTrue(app.staticTexts["Metronome"].exists)
+        XCTAssertTrue(app.staticTexts["120 BPM"].exists)
+        XCTAssertTrue(app.buttons["Start"].exists)
+        XCTAssertTrue(app.staticTexts["Subdivision"].exists)
+    }
+    
+    @MainActor
+    func testMetronomeStartStop() throws {
+        let app = XCUIApplication()
+        app.launch()
+        
+        // Initially should show "Start" button
+        let startButton = app.buttons["Start"]
+        let stopButton = app.buttons["Stop"]
+        
+        XCTAssertTrue(startButton.exists)
+        XCTAssertFalse(stopButton.exists)
+        
+        // Tap Start button
+        startButton.tap()
+        
+        // Should now show "Stop" button and beat indicator
+        XCTAssertTrue(stopButton.exists)
+        XCTAssertFalse(startButton.exists)
+        XCTAssertTrue(app.staticTexts["Beat: 1"].exists)
+        
+        // Wait a moment for beats to increment
+        sleep(1)
+        
+        // Tap Stop button
+        stopButton.tap()
+        
+        // Should return to "Start" and hide beat indicator
+        XCTAssertTrue(startButton.exists)
+        XCTAssertFalse(stopButton.exists)
+        XCTAssertFalse(app.staticTexts.matching(identifier: "Beat:").firstMatch.exists)
+    }
+    
+    @MainActor
+    func testMetronomeSubdivisionMenu() throws {
+        let app = XCUIApplication()
+        app.launch()
+        
+        // Should show default quarter notes elements
+        XCTAssertTrue(app.staticTexts["♩"].exists)
+        XCTAssertTrue(app.staticTexts["Quarter Notes"].exists)
+        XCTAssertTrue(app.staticTexts["Subdivision"].exists)
+        
+        // Find the subdivision menu button (it's the one with the chevron)
+        let subdivisionMenuButton = app.buttons.containing(.staticText, identifier:"♩").firstMatch
+        XCTAssertTrue(subdivisionMenuButton.exists)
+        
+        // Tap the subdivision menu
+        subdivisionMenuButton.tap()
+        
+        // Menu should appear with all options - now with proper accessibility labels
+        XCTAssertTrue(app.buttons["♩"].exists)
+        XCTAssertTrue(app.buttons["♫"].exists)
+        XCTAssertTrue(app.buttons["♪♪♪"].exists)
+        
+        // Select eighth notes
+        app.buttons["♫ Eighth Notes"].tap()
+        
+        // Should update to show eighth notes
+        XCTAssertTrue(app.staticTexts["♫"].exists)
+        XCTAssertTrue(app.staticTexts["Eighth Notes"].exists)
+        XCTAssertFalse(app.staticTexts["♩"].exists)
+    }
+    
+    @MainActor
+    func testMetronomeBPMSlider() throws {
+        let app = XCUIApplication()
+        app.launch()
+        
+        // Should show default 120 BPM
+        XCTAssertTrue(app.staticTexts["120 BPM"].exists)
+        
+        // Find and adjust BPM slider
+        let slider = app.sliders.firstMatch
+        XCTAssertTrue(slider.exists)
+        
+        // Adjust slider to increase BPM
+        slider.adjust(toNormalizedSliderPosition: 0.75) // Should be around 310 BPM
+        
+        // BPM should have changed (exact value may vary due to slider precision)
+        XCTAssertFalse(app.staticTexts["120 BPM"].exists)
+        
+        // Start metronome to test that slider gets disabled
+        app.buttons["Start"].tap()
+        
+        // Slider should be disabled when playing
+        XCTAssertFalse(slider.isEnabled)
+        
+        // Stop metronome
+        app.buttons["Stop"].tap()
+        
+        // Slider should be enabled again
+        XCTAssertTrue(slider.isEnabled)
+    }
+    
+    @MainActor
+    func testTabNavigation() throws {
+        let app = XCUIApplication()
+        app.launch()
+        
+        // Should start on Metronome tab
+        XCTAssertTrue(app.staticTexts["Metronome"].exists)
+        
+        // Navigate to Stopwatch tab
+        app.tabBars.buttons["Stopwatch"].tap()
+        XCTAssertTrue(app.staticTexts["Stopwatch"].exists)
+        XCTAssertTrue(app.staticTexts["00:00.00"].exists)
+        
+        // Navigate to History tab
+        app.tabBars.buttons["History"].tap()
+        XCTAssertTrue(app.staticTexts["History"].exists)
+        
+        // Navigate back to Metronome tab
+        app.tabBars.buttons["Metronome"].tap()
+        XCTAssertTrue(app.staticTexts["Metronome"].exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'BPM'")).firstMatch.exists)
     }
     
     @MainActor

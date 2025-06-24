@@ -71,28 +71,6 @@
 		};
 /* End PBXFrameworksBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		4E4B20BD2E09A2240022F1A5 /* Auto Increment Build Number */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Auto Increment Build Number";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# Get current build number, default to 1 if not found\nbuildNumber=$(/usr/libexec/PlistBuddy -c \"Print CFBundleVersion\" \"$INFOPLIST_FILE\" 2>/dev/null || echo \"1\")\n\n# Remove any non-numeric characters and ensure it's a number\nbuildNumber=$(echo $buildNumber | sed 's/[^0-9]//g')\nif [ -z \"$buildNumber\" ]; then\n    buildNumber=1\nfi\n\n# Increment build number\nbuildNumber=$(($buildNumber + 1))\n\n# Set the new build number\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $buildNumber\" \"$INFOPLIST_FILE\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :CFBundleVersion string $buildNumber\" \"$INFOPLIST_FILE\"\n\necho \"Build number incremented to: $buildNumber\"";
-		};
-/* End PBXShellScriptBuildPhase section */
-
 /* Begin PBXGroup section */
 		4E4B20872E09A2220022F1A5 = {
 			isa = PBXGroup;
@@ -253,6 +231,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		4E4B20BD2E09A2240022F1A5 /* Auto Increment Build Number */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Auto Increment Build Number";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Get current build number, default to 1 if not found\nbuildNumber=$(/usr/libexec/PlistBuddy -c \"Print CFBundleVersion\" \"$INFOPLIST_FILE\" 2>/dev/null || echo \"1\")\n\n# Remove any non-numeric characters and ensure it's a number\nbuildNumber=$(echo $buildNumber | sed 's/[^0-9]//g')\nif [ -z \"$buildNumber\" ]; then\n    buildNumber=1\nfi\n\n# Increment build number\nbuildNumber=$(($buildNumber + 1))\n\n# Set the new build number\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $buildNumber\" \"$INFOPLIST_FILE\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :CFBundleVersion string $buildNumber\" \"$INFOPLIST_FILE\"\n\necho \"Build number incremented to: $buildNumber\"";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		4E4B208C2E09A2220022F1A5 /* Sources */ = {
