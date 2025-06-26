@@ -8,7 +8,7 @@
 import SwiftUI
 import AVFoundation
 
-enum NoteSubdivision: String, CaseIterable {
+enum NoteSubdivision: String, CaseIterable, Codable {
     case quarter = "Quarter Notes"
     case eighth = "Eighth Notes"
     case sixteenth = "Sixteenth Notes"
@@ -167,6 +167,18 @@ struct MetronomeView: View {
                 Spacer()
             }
             .navigationTitle("Metronome")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: PresetView(
+                        currentBPM: $bpm,
+                        currentBeatsPerBar: $beatsPerBar,
+                        currentSubdivision: $subdivision,
+                        currentMutedBeats: $mutedBeats
+                    )) {
+                        Image(systemName: "list.bullet")
+                    }
+                }
+            }
             .padding()
         }
     }
