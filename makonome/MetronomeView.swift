@@ -43,6 +43,14 @@ struct MetronomeView: View {
     @State private var beatsPerBar = UserDefaults.standard.integer(forKey: "MetronomeBeatsPerBar") != 0 ? UserDefaults.standard.integer(forKey: "MetronomeBeatsPerBar") : 4
     @State private var subdivision: NoteSubdivision = NoteSubdivision(rawValue: UserDefaults.standard.string(forKey: "MetronomeSubdivision") ?? "") ?? .quarter
     @State private var lastBeatTime: Date?
+    @State private var isMuted = UserDefaults.standard.bool(forKey: "MetronomeIsMuted")
+    @State private var mutedBeats: Set<Int> = {
+        let savedData = UserDefaults.standard.data(forKey: "MetronomeMutedBeats")
+        if let data = savedData, let decoded = try? JSONDecoder().decode(Set<Int>.self, from: data) {
+            return decoded
+        }
+        return Set<Int>()
+    }()
     
     static func isAccentedBeat(beatCount: Int, subdivision: NoteSubdivision) -> Bool {
         return beatCount == 1  // First beat of each bar is accented
@@ -105,24 +113,47 @@ struct MetronomeView: View {
                     .disabled(isPlaying)
                 }
                 
-                Button(isPlaying ? "Stop" : "Start") {
-                    toggleMetronome()
+                HStack(spacing: 20) {
+                    Button(isPlaying ? "Stop" : "Start") {
+                        toggleMetronome()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .font(.title2)
+                    
+                    Button(action: {
+                        isMuted.toggle()
+                        UserDefaults.standard.set(isMuted, forKey: "MetronomeIsMuted")
+                    }) {
+                        Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                            .font(.title2)
+                            .foregroundColor(isMuted ? .red : .blue)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.borderedProminent)
-                .font(.title2)
                 
                 VStack {
                     HStack(spacing: 12) {
                         ForEach(1...beatsPerBar, id: \.self) { beat in
-                            Circle()
-                                .fill(beatIndicatorColor(for: beat))
-                                .frame(width: 50, height: 50)
-                                .overlay(
-                                    Circle()
-                                        .stroke(beatIndicatorBorder(for: beat), lineWidth: 3)
-                                )
-                                .scaleEffect(isPlaying && beatCount == beat ? 1.2 : 1.0)
-                                .animation(.easeInOut(duration: 0.1), value: beatCount)
+                            Button(action: {
+                                toggleBeatMute(beat: beat)
+                            }) {
+                                Circle()
+                                    .fill(beatIndicatorColor(for: beat))
+                                    .frame(width: 50, height: 50)
+                                    .overlay(
+                                        Circle()
+                                            .stroke(beatIndicatorBorder(for: beat), lineWidth: 3)
+                                    )
+                                    .overlay(
+                                        mutedBeats.contains(beat) ? 
+                                        Image(systemName: "speaker.slash")
+                                            .foregroundColor(.white)
+                                            .font(.title3) : nil
+                                    )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .scaleEffect(isPlaying && beatCount == beat ? 1.2 : 1.0)
+                            .animation(.easeInOut(duration: 0.1), value: beatCount)
                         }
                     }
                     
@@ -203,7 +234,9 @@ struct MetronomeView: View {
     }
     
     private func beatIndicatorColor(for beat: Int) -> Color {
-        if isPlaying && beatCount == beat {
+        if mutedBeats.contains(beat) {
+            return Color.gray.opacity(0.6)
+        } else if isPlaying && beatCount == beat {
             return beat == 1 ? Color.red : Color.blue
         } else {
             return Color.gray.opacity(0.3)
@@ -228,10 +261,27 @@ struct MetronomeView: View {
     }
     
     private func playClick() {
+        guard !isMuted && !mutedBeats.contains(beatCount) else { return }
+        
         if Self.isAccentedBeat(beatCount: beatCount, subdivision: subdivision) {
             AudioServicesPlaySystemSound(1103) // 1103 is louder click sound
         } else {
             AudioServicesPlaySystemSound(1104) // 1104 is click sound
+        }
+    }
+    
+    private func toggleBeatMute(beat: Int) {
+        if mutedBeats.contains(beat) {
+            mutedBeats.remove(beat)
+        } else {
+            mutedBeats.insert(beat)
+        }
+        saveMutedBeats()
+    }
+    
+    private func saveMutedBeats() {
+        if let encoded = try? JSONEncoder().encode(mutedBeats) {
+            UserDefaults.standard.set(encoded, forKey: "MetronomeMutedBeats")
         }
     }
 }
