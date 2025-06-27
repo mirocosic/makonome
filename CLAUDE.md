@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a SwiftUI iOS application built with Xcode. The project uses the modern Swift Testing framework for unit tests.
+Makonome is a SwiftUI iOS application that provides metronome and stopwatch functionality. The app features a tabbed interface with three main sections: Stopwatch, Metronome, and Settings. The project uses the modern Swift Testing framework for unit tests.
 
 ## Development Commands
 
@@ -49,19 +49,42 @@ xcrun simctl launch booted com.mirocosic.makonome
 
 ### Project Structure
 - `makonome/` - Main application source code
-  - `makonomeApp.swift` - App entry point using `@main`
-  - `ContentView.swift` - Primary SwiftUI view
+  - `makonomeApp.swift` - App entry point using `@main` with ThemeManager integration
+  - `MainTabView.swift` - Tab-based navigation with three main views
+  - `MetronomeView.swift` - Metronome functionality with AVFoundation audio
+  - `StopwatchView.swift` - Stopwatch functionality
+  - `SettingsView.swift` - Application settings and preferences
+  - `PresetView.swift` - Preset management for metronome settings
+  - `ThemeManager.swift` - Theme management (light/dark/system)
+  - `UsageTracker.swift` - Usage tracking functionality
   - `Assets.xcassets/` - App icons and visual assets
 - `makonomeTests/` - Unit tests using Swift Testing framework
 - `makonomeUITests/` - UI automation tests
 
+### Key Features
+- **Metronome**: Full-featured metronome with note subdivisions, tempo control, and audio playback
+- **Stopwatch**: Standard stopwatch functionality with lap timing
+- **Theme Management**: Light, dark, and system theme support
+- **Usage Tracking**: Session and total usage tracking
+- **Presets**: Save and manage metronome configurations
+
+### Frameworks and Dependencies
+- **SwiftUI**: Primary UI framework
+- **AVFoundation**: Audio playback for metronome clicks
+- **Foundation**: Core framework for data management and UserDefaults
+- **Swift Testing**: Modern testing framework with `@Test` annotations
+
 ### SwiftUI Architecture
 - Uses standard SwiftUI app lifecycle with `WindowGroup`
+- Environment objects for theme management across views
 - Views follow SwiftUI declarative patterns with `View` protocol
 - Preview support enabled with `#Preview` macro
+- Tab-based navigation with SF Symbols icons
 
 ## Development Notes
 
 - The project uses modern Swift features including the new Swift Testing framework
 - SwiftUI previews are configured for rapid development iteration
 - Standard iOS app structure with separate test targets for unit and UI testing
+- Theme management is handled through environment objects
+- Usage tracking persists data using UserDefaults
