@@ -34,6 +34,7 @@ enum NoteSubdivision: String, CaseIterable, Codable {
 }
 
 struct MetronomeView: View {
+    @ObservedObject private var usageTracker = UsageTracker.shared
     @State private var bpm: Double = UserDefaults.standard.double(forKey: "MetronomeBPM") != 0 ? UserDefaults.standard.double(forKey: "MetronomeBPM") : 120
     @State private var isPlaying = false
     @State private var timer: Timer?
@@ -194,6 +195,7 @@ struct MetronomeView: View {
     private func startMetronome() {
         setupAudio()
         isPlaying = true
+        usageTracker.startTracking()
         playBeat()
         startRegularTimer()
     }
@@ -202,6 +204,7 @@ struct MetronomeView: View {
         timer?.invalidate()
         timer = nil
         isPlaying = false
+        usageTracker.stopTracking()
         beatCount = 0
         barCount = 1
         lastBeatTime = nil
