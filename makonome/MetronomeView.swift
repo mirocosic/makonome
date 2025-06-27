@@ -139,6 +139,9 @@ struct MetronomeView: View {
                             UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
                         }
                     
+                    SimpleBPMScrollWheel()
+                        .padding(.horizontal)
+                    
                     Button(action: {
                         handleTapTempo()
                     }) {
