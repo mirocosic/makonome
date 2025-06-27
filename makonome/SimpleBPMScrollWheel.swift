@@ -3,6 +3,7 @@ import SwiftUI
 struct SimpleBPMScrollWheel: View {
     @Binding var bpm: Double
     @State private var isUpdatingFromScroll = false
+    @State private var scrollOffset: CGFloat = 0
     
     private let minBPM = 40
     private let maxBPM = 400
@@ -20,6 +21,8 @@ struct SimpleBPMScrollWheel: View {
                 }
             }
             .padding(.horizontal, 200) // Add padding so we can scroll to center any value
+            .offset(x: calculateOffset(for: bpm))
+            .animation(.easeInOut(duration: 0.3), value: calculateOffset(for: bpm))
             .background(
                 GeometryReader { geometry in
                     Color.clear
@@ -39,8 +42,7 @@ struct SimpleBPMScrollWheel: View {
             alignment: .center
         )
         .onAppear {
-            // Initialize scroll position based on current BPM
-            scrollToBPM(Int(bpm))
+            scrollOffset = calculateOffset(for: bpm)
         }
         .onChange(of: bpm) { _, newBPM in
             if !isUpdatingFromScroll {
@@ -58,6 +60,11 @@ struct SimpleBPMScrollWheel: View {
         } else {
             return 20  // Regular marks
         }
+    }
+
+      private func calculateOffset(for bpm: Double) -> CGFloat {
+        let barIndex = Int(bpm) - minBPM
+        return CGFloat(barIndex) * -totalBarWidth + 200 // Account for left padding
     }
     
     private func updateBPMFromGeometry(_ geometry: GeometryProxy) {

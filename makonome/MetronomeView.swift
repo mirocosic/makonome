@@ -132,12 +132,12 @@ struct MetronomeView: View {
                         .disabled(bpm >= 400)
                     }
                     
-                    Slider(value: $bpm, in: 40...400, step: 1)
-                        .padding(.horizontal)
-                        .onChange(of: bpm) { _, _ in
-                            updateBPMWhilePlaying()
-                            UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
-                        }
+                    // Slider(value: $bpm, in: 40...400, step: 1)
+                    //     .padding(.horizontal)
+                    //     .onChange(of: bpm) { _, _ in
+                    //         updateBPMWhilePlaying()
+                    //         UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+                    //     }
                     
                     // BPMScrollWheel(bpm: $bpm)
                     //     .padding(.horizontal)
