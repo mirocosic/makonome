@@ -52,6 +52,11 @@ struct MetronomeView: View {
         }
         return Set<Int>()
     }()
+    @State private var tapTimes: [Date] = []
+    @State private var tapTimer: Timer?
+    @State private var isEditingBPM = false
+    @State private var bpmInputText = ""
+    @FocusState private var isBPMInputFocused: Bool
     
     static func isAccentedBeat(beatCount: Int, subdivision: NoteSubdivision) -> Bool {
         return beatCount == 1  // First beat of each bar is accented
@@ -64,12 +69,68 @@ struct MetronomeView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 30) {
+            ZStack {
+                GeometryReader { geometry in
+                    VStack(spacing: 30) {
                 
                 VStack {
-                    Text("\(Int(bpm)) BPM")
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
-                        .monospacedDigit()
+                    HStack(spacing: 20) {
+                        Button(action: {
+                            decrementBPM()
+                        }) {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.title)
+                                .foregroundColor(.blue)
+                        }
+                        .disabled(bpm <= 40)
+                        
+                        Group {
+                            if isEditingBPM {
+                                TextField("BPM", text: $bpmInputText)
+                                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                                    .monospacedDigit()
+                                    .multilineTextAlignment(.center)
+                                    .frame(minWidth: 180)
+                                    .keyboardType(.numberPad)
+                                    .focused($isBPMInputFocused)
+                                    .onSubmit {
+                                        finishBPMEditing()
+                                    }
+                                    .onAppear {
+                                        bpmInputText = String(Int(bpm))
+                                        isBPMInputFocused = true
+                                    }
+                                    .toolbar {
+                                        ToolbarItemGroup(placement: .keyboard) {
+                                            Spacer()
+                                            Button("Done") {
+                                                finishBPMEditing()
+                                            }
+                                        }
+                                    }
+                                    .transition(.opacity.combined(with: .scale))
+                            } else {
+                                Text("\(Int(bpm)) BPM")
+                                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                                    .monospacedDigit()
+                                    .frame(minWidth: 180)
+                                    .onTapGesture {
+                                        startBPMEditing()
+                                    }
+                                    .transition(.opacity.combined(with: .scale))
+                            }
+                        }
+                        .animation(.easeInOut(duration: 0.2), value: isEditingBPM)
+                        
+                        Button(action: {
+                            incrementBPM()
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title)
+                                .foregroundColor(.blue)
+                        }
+                        .disabled(bpm >= 400)
+                    }
                     
                     Slider(value: $bpm, in: 40...400, step: 1)
                         .padding(.horizontal)
@@ -77,6 +138,20 @@ struct MetronomeView: View {
                             updateBPMWhilePlaying()
                             UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
                         }
+                    
+                    Button(action: {
+                        handleTapTempo()
+                    }) {
+                        HStack {
+                            Image(systemName: "hand.tap.fill")
+                            Text(tapTimes.isEmpty ? "Tap Tempo" : "Tap \(tapTimes.count)")
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.blue.opacity(0.1))
+                        .foregroundColor(.blue)
+                        .cornerRadius(8)
+                    }
                 }
                 
                 VStack {
@@ -165,7 +240,12 @@ struct MetronomeView: View {
                     }
                 }
                 
-                Spacer()
+                    Spacer()
+                }
+                .ignoresSafeArea(.keyboard, edges: .bottom)
+                .padding()
+                .frame(width: geometry.size.width, height: geometry.size.height)
+            }
             }
             .navigationTitle("Metronome")
             .toolbar {
@@ -180,8 +260,8 @@ struct MetronomeView: View {
                     }
                 }
             }
-            .padding()
         }
+        .ignoresSafeArea(.keyboard, edges: .all)
     }
     
     private func toggleMetronome() {
@@ -299,7 +379,89 @@ struct MetronomeView: View {
             UserDefaults.standard.set(encoded, forKey: "MetronomeMutedBeats")
         }
     }
+    
+    private func incrementBPM() {
+        if bpm < 400 {
+            bpm += 1
+            triggerHapticFeedback()
+            updateBPMWhilePlaying()
+            UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+        }
+    }
+    
+    private func decrementBPM() {
+        if bpm > 40 {
+            bpm -= 1
+            triggerHapticFeedback()
+            updateBPMWhilePlaying()
+            UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+        }
+    }
+    
+    private func handleTapTempo() {
+        let now = Date()
+        tapTimes.append(now)
+        
+        // Reset tap timer
+        tapTimer?.invalidate()
+        tapTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
+            self.tapTimes.removeAll()
+        }
+        
+        // Need at least 2 taps to calculate BPM
+        if tapTimes.count >= 2 {
+            let intervals = zip(tapTimes.dropFirst(), tapTimes).map { $0.timeIntervalSince($1) }
+            let averageInterval = intervals.reduce(0, +) / Double(intervals.count)
+            let calculatedBPM = 60.0 / averageInterval
+            
+            // Clamp BPM to valid range
+            let clampedBPM = max(40, min(400, calculatedBPM))
+            bpm = clampedBPM
+            triggerHapticFeedback()
+            updateBPMWhilePlaying()
+            UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+        }
+        
+        // Keep only the last 6 taps for better accuracy
+        if tapTimes.count > 6 {
+            tapTimes.removeFirst()
+        }
+    }
+    
+    private func triggerHapticFeedback() {
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+    }
+    
+    private func startBPMEditing() {
+        bpmInputText = String(Int(bpm))
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isEditingBPM = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            isBPMInputFocused = true
+        }
+    }
+    
+    private func finishBPMEditing() {
+        // Validate and update BPM
+        if let newBPM = Double(bpmInputText), newBPM >= 40, newBPM <= 400 {
+            bpm = newBPM
+            triggerHapticFeedback()
+            updateBPMWhilePlaying()
+            UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+        } else {
+            // Invalid input, revert to current BPM
+            bpmInputText = String(Int(bpm))
+        }
+        
+        isBPMInputFocused = false
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isEditingBPM = false
+        }
+    }
 }
+
 
 #Preview {
     MetronomeView()
