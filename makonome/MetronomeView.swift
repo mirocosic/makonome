@@ -139,7 +139,10 @@ struct MetronomeView: View {
                             UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
                         }
                     
-                    SimpleBPMScrollWheel()
+                    // BPMScrollWheel(bpm: $bpm)
+                    //     .padding(.horizontal)
+                    
+                    SimpleBPMScrollWheel(bpm: $bpm)
                         .padding(.horizontal)
                     
                     Button(action: {
