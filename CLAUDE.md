@@ -8,10 +8,37 @@ This is a SwiftUI iOS application built with Xcode. The project uses the modern 
 
 ## Development Commands
 
+### Auto-Build Script (Recommended)
+Start the auto-build watcher that rebuilds and relaunches the app on file changes:
+```bash
+./auto-build.sh &
+```
+This command should be run at the start of each development session to enable live reloading.
+
 ### Building and Running
 - Open the project in Xcode: `open makonome.xcodeproj`
 - Build from command line: `xcodebuild -project makonome.xcodeproj -scheme makonome build`
-- Run tests: `xcodebuild test -project makonome.xcodeproj -scheme makonome -destination 'platform=iOS Simulator,name=iPhone 15'`
+- Run tests: `xcodebuild test -project makonome.xcodeproj -scheme makonome -destination 'platform=iOS Simulator,name=iPhone 16'`
+
+### Command Line Build and Run
+To build and run the app on iOS Simulator from command line:
+```bash
+# List available simulators
+xcrun simctl list devices available
+
+# Build, install and launch on simulator (all in one command)
+xcodebuild -project makonome.xcodeproj -scheme makonome -destination 'platform=iOS Simulator,name=iPhone 16' -derivedDataPath /tmp/makonome-build && xcrun simctl install booted /tmp/makonome-build/Build/Products/Debug-iphonesimulator/makonome.app && xcrun simctl launch booted com.mirocosic.makonome
+
+# Or step by step:
+# 1. Build for simulator
+xcodebuild -project makonome.xcodeproj -scheme makonome -destination 'platform=iOS Simulator,name=iPhone 16' -derivedDataPath /tmp/makonome-build
+
+# 2. Install app on booted simulator
+xcrun simctl install booted /tmp/makonome-build/Build/Products/Debug-iphonesimulator/makonome.app
+
+# 3. Launch app
+xcrun simctl launch booted com.mirocosic.makonome
+```
 
 ### Testing
 - Unit tests use the Swift Testing framework with `@Test` annotations
