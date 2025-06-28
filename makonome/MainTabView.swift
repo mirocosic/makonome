@@ -8,30 +8,23 @@
 import SwiftUI
 
 struct MainTabView: View {
-    @State private var selectedTab = 1
+    @State private var selectedTab = 0
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            StopwatchView()
-                .tabItem {
-                    Image(systemName: "stopwatch")
-                    Text("Stopwatch")
-                }
-                .tag(0)
-            
             MetronomeView()
                 .tabItem {
                     Image(systemName: "metronome")
                     Text("Metronome")
                 }
-                .tag(1)
+                .tag(0)
             
             SettingsView()
                 .tabItem {
                     Image(systemName: "gear")
                     Text("Settings")
                 }
-                .tag(2)
+                .tag(1)
         }
     }
 }

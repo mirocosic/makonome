@@ -22,99 +22,6 @@ final class makonomeUITests: XCTestCase {
         // Put teardown code here. This method is called after the invocation of each test method in the class.
     }
 
-    @MainActor
-    func testStopwatchButtonToggle() throws {
-        let app = XCUIApplication()
-        app.launch()
-        
-        // Navigate to Stopwatch tab
-        app.tabBars.buttons["Stopwatch"].tap()
-        
-        // Find the Start/Stop button
-        let startButton = app.buttons["Start"]
-        let stopButton = app.buttons["Stop"]
-        
-        // Initially should show "Start"
-        XCTAssertTrue(startButton.exists)
-        XCTAssertFalse(stopButton.exists)
-        
-        // Tap Start button
-        startButton.tap()
-        
-        // Should now show "Stop"
-        XCTAssertTrue(stopButton.exists)
-        XCTAssertFalse(startButton.exists)
-        
-        // Tap Stop button
-        stopButton.tap()
-        
-        // Should return to "Start"
-        XCTAssertTrue(startButton.exists)
-        XCTAssertFalse(stopButton.exists)
-    }
-    
-    @MainActor
-    func testStopwatchUI() throws {
-        let app = XCUIApplication()
-        app.launch()
-        
-        // Navigate to Stopwatch tab
-        app.tabBars.buttons["Stopwatch"].tap()
-        
-        // Check that initial UI elements exist
-        XCTAssertTrue(app.staticTexts["Stopwatch"].exists)
-        XCTAssertTrue(app.staticTexts["00:00.00"].exists)
-        XCTAssertTrue(app.buttons["Start"].exists)
-        
-        // Start the timer
-        app.buttons["Start"].tap()
-        
-        // Wait a moment and check that time has changed
-        sleep(1)
-        
-        // Stop the timer
-        app.buttons["Stop"].tap()
-        
-        // Check that time has reset to 00:00.00
-        XCTAssertTrue(app.staticTexts["00:00.00"].exists)
-        
-        // Check if "Previous Times" section appeared
-        XCTAssertTrue(app.staticTexts["Previous Times"].exists)
-    }
-
-    @MainActor
-    func testLoggedTimes() throws {
-        let app = XCUIApplication()
-        app.launch()
-        
-        // Navigate to Stopwatch tab
-        app.tabBars.buttons["Stopwatch"].tap()
-        
-        // Initially no "Previous Times" should be visible
-        XCTAssertFalse(app.staticTexts["Previous Times"].exists)
-        
-        // Start and stop timer to log first time
-        app.buttons["Start"].tap()
-        sleep(2) // Wait 2 seconds
-        app.buttons["Stop"].tap()
-        
-        // Check that "Previous Times" section appeared
-        XCTAssertTrue(app.staticTexts["Previous Times"].exists)
-        
-        // Check that first logged time exists
-        XCTAssertTrue(app.staticTexts["#1"].exists)
-        
-        // Start and stop timer again to log second time
-        app.buttons["Start"].tap()
-        sleep(1) // Wait 1 second
-        app.buttons["Stop"].tap()
-        
-        // Check that second logged time exists
-        XCTAssertTrue(app.staticTexts["#2"].exists)
-        
-        // Timer should reset to 00:00.00 after each stop
-        XCTAssertTrue(app.staticTexts["00:00.00"].exists)
-    }
     
     // MARK: - Metronome UI Tests
     
@@ -232,14 +139,9 @@ final class makonomeUITests: XCTestCase {
         // Should start on Metronome tab
         XCTAssertTrue(app.staticTexts["Metronome"].exists)
         
-        // Navigate to Stopwatch tab
-        app.tabBars.buttons["Stopwatch"].tap()
-        XCTAssertTrue(app.staticTexts["Stopwatch"].exists)
-        XCTAssertTrue(app.staticTexts["00:00.00"].exists)
-        
-        // Navigate to History tab
-        app.tabBars.buttons["History"].tap()
-        XCTAssertTrue(app.staticTexts["History"].exists)
+        // Navigate to Settings tab
+        app.tabBars.buttons["Settings"].tap()
+        XCTAssertTrue(app.staticTexts["Settings"].exists)
         
         // Navigate back to Metronome tab
         app.tabBars.buttons["Metronome"].tap()
