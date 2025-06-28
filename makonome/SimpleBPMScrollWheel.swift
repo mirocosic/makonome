@@ -12,43 +12,53 @@ struct SimpleBPMScrollWheel: View {
     private let totalBarWidth: CGFloat = 7 // barWidth + barSpacing
     
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: barSpacing) {
-                ForEach(minBPM...maxBPM, id: \.self) { bpmValue in
-                    Rectangle()
-                        .fill(Color.blue.opacity(0.6))
-                        .frame(width: barWidth, height: barHeight(for: bpmValue))
+        GeometryReader { geometry in
+            let halfWidth = geometry.size.width / 2
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: barSpacing) {
+                    // Add leading spacer to center the first value
+                    Spacer()
+                        .frame(width: halfWidth)
+                    
+                    ForEach(minBPM...maxBPM, id: \.self) { bpmValue in
+                        Rectangle()
+                            .fill(Color.blue.opacity(0.6))
+                            .frame(width: barWidth, height: barHeight(for: bpmValue))
+                    }
+                    
+                    // Add trailing spacer to center the last value
+                    Spacer()
+                        .frame(width: halfWidth)
+                }
+                .background(
+                    GeometryReader { scrollGeometry in
+                        Color.clear
+                            .onChange(of: scrollGeometry.frame(in: .global)) { _, _ in
+                                updateBPMFromGeometry(scrollGeometry, containerWidth: geometry.size.width)
+                            }
+                    }
+                )
+            }
+            .frame(height: 60)
+            .overlay(
+                // Center indicator line
+                Rectangle()
+                    .fill(Color.red)
+                    .frame(width: 2, height: 60)
+                    .opacity(0.8),
+                alignment: .center
+            )
+            .onAppear {
+                scrollToBPM(Int(bpm))
+            }
+            .onChange(of: bpm) { _, newBPM in
+                if !isUpdatingFromScroll {
+                    scrollToBPM(Int(newBPM))
                 }
             }
-            .padding(.horizontal, 200) // Add padding so we can scroll to center any value
-            .offset(x: calculateOffset(for: bpm))
-            .animation(.easeInOut(duration: 0.3), value: calculateOffset(for: bpm))
-            .background(
-                GeometryReader { geometry in
-                    Color.clear
-                        .onChange(of: geometry.frame(in: .global)) { _, _ in
-                            updateBPMFromGeometry(geometry)
-                        }
-                }
-            )
         }
         .frame(height: 60)
-        .overlay(
-            // Center indicator line
-            Rectangle()
-                .fill(Color.red)
-                .frame(width: 2, height: 60)
-                .opacity(0.8),
-            alignment: .center
-        )
-        .onAppear {
-            scrollOffset = calculateOffset(for: bpm)
-        }
-        .onChange(of: bpm) { _, newBPM in
-            if !isUpdatingFromScroll {
-                scrollToBPM(Int(newBPM))
-            }
-        }
     }
     
     private func barHeight(for bpm: Int) -> CGFloat {
@@ -62,17 +72,15 @@ struct SimpleBPMScrollWheel: View {
         }
     }
 
-      private func calculateOffset(for bpm: Double) -> CGFloat {
-        let barIndex = Int(bpm) - minBPM
-        return CGFloat(barIndex) * -totalBarWidth + 200 // Account for left padding
-    }
-    
-    private func updateBPMFromGeometry(_ geometry: GeometryProxy) {
+    private func updateBPMFromGeometry(_ geometry: GeometryProxy, containerWidth: CGFloat) {
         let frame = geometry.frame(in: .global)
         let scrollOffset = frame.minX
+        let halfWidth = containerWidth / 2
         
         // Calculate BPM based on scroll position
-        let contentOffset = -scrollOffset + 200 // Account for left padding
+        // When scrolled fully left, we want BPM = minBPM (40)
+        // When scrolled fully right, we want BPM = maxBPM (400)
+        let contentOffset = halfWidth - scrollOffset
         let barIndex = Int((contentOffset / totalBarWidth).rounded())
         let clampedIndex = max(0, min(maxBPM - minBPM, barIndex))
         let newBPM = Double(minBPM + clampedIndex)
@@ -80,6 +88,7 @@ struct SimpleBPMScrollWheel: View {
         if newBPM != bpm {
             isUpdatingFromScroll = true
             bpm = newBPM
+            UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
             
             // Reset flag after a short delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -89,8 +98,9 @@ struct SimpleBPMScrollWheel: View {
     }
     
     private func scrollToBPM(_ targetBPM: Int) {
-        // This would ideally use ScrollViewReader to programmatically scroll
-        // For now, the scroll position will be updated when user interacts
+        // Since we can't programmatically scroll without ScrollViewReader,
+        // we'll rely on the scroll view's natural behavior and user interaction
+        // The scroll position will be automatically updated when the user scrolls
     }
 }
 

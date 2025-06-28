@@ -57,6 +57,8 @@ struct MetronomeView: View {
     @State private var isEditingBPM = false
     @State private var bpmInputText = ""
     @FocusState private var isBPMInputFocused: Bool
+    @State private var showingSubdivisionPicker = false
+    @State private var showingBeatsPerBarPicker = false
     
     static func isAccentedBeat(beatCount: Int, subdivision: NoteSubdivision) -> Bool {
         return beatCount == 1  // First beat of each bar is accented
@@ -65,6 +67,16 @@ struct MetronomeView: View {
     static func calculateInterval(bpm: Double, subdivision: NoteSubdivision) -> TimeInterval {
         let baseInterval = 60.0 / bpm
         return baseInterval / subdivision.multiplier
+    }
+    
+    var beatIndicatorSize: CGFloat {
+        // Responsive sizing based on number of beats
+        switch beatsPerBar {
+        case 1...4: return 50
+        case 5...8: return 45
+        case 9...12: return 40
+        default: return 35 // 13-16 beats
+        }
     }
     
     var body: some View {
@@ -160,39 +172,52 @@ struct MetronomeView: View {
                     }
                 }
                 
-                VStack {
-                    Text("Subdivision")
-                        .font(.headline)
-                    
-                    Menu {
-                        ForEach(NoteSubdivision.allCases, id: \.self) { subdivision in
-                            Button(action: {
-                                self.subdivision = subdivision
-                                UserDefaults.standard.set(subdivision.rawValue, forKey: "MetronomeSubdivision")
-                            }) {
-                                HStack {
-                                    Text(subdivision.symbol)
-                                    Text(subdivision.rawValue)
-                                    Spacer()
-                                    if self.subdivision == subdivision {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
+                HStack(spacing: 40) {
+                    VStack {
+                        Text("Subdivision")
+                            .font(.headline)
+                        
+                        Button(action: {
+                            showingSubdivisionPicker = true
+                        }) {
+                            HStack {
+                                Text(subdivision.symbol)
+                                Text(subdivision.rawValue)
+                                Image(systemName: "chevron.down")
                             }
-                            .accessibilityLabel("\(subdivision.symbol) \(subdivision.rawValue)")
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.gray.opacity(0.2))
+                            .cornerRadius(8)
                         }
-                    } label: {
-                        HStack {
-                            Text(subdivision.symbol)
-                            Text(subdivision.rawValue)
-                            Image(systemName: "chevron.down")
+                        .disabled(isPlaying)
+                        .sheet(isPresented: $showingSubdivisionPicker) {
+                            SubdivisionPickerSheet(subdivision: $subdivision)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.gray.opacity(0.2))
-                        .cornerRadius(8)
                     }
-                    .disabled(isPlaying)
+                    
+                    VStack {
+                        Text("Beats Per Bar")
+                            .font(.headline)
+                        
+                        Button(action: {
+                            showingBeatsPerBarPicker = true
+                        }) {
+                            HStack {
+                                Text("\(beatsPerBar)")
+                                Text(beatsPerBar == 1 ? "beat" : "beats")
+                                Image(systemName: "chevron.down")
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.gray.opacity(0.2))
+                            .cornerRadius(8)
+                        }
+                        .disabled(isPlaying)
+                        .sheet(isPresented: $showingBeatsPerBarPicker) {
+                            BeatsPerBarPickerSheet(beatsPerBar: $beatsPerBar, cleanupMutedBeats: cleanupMutedBeats)
+                        }
+                    }
                 }
                 
                 HStack(spacing: 20) {
@@ -214,14 +239,14 @@ struct MetronomeView: View {
                 }
                 
                 VStack {
-                    HStack(spacing: 12) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: min(beatsPerBar, 8)), spacing: 12) {
                         ForEach(1...beatsPerBar, id: \.self) { beat in
                             Button(action: {
                                 toggleBeatMute(beat: beat)
                             }) {
                                 Circle()
                                     .fill(beatIndicatorColor(for: beat))
-                                    .frame(width: 50, height: 50)
+                                    .frame(width: beatIndicatorSize, height: beatIndicatorSize)
                                     .overlay(
                                         Circle()
                                             .stroke(beatIndicatorBorder(for: beat), lineWidth: 3)
@@ -230,7 +255,13 @@ struct MetronomeView: View {
                                         mutedBeats.contains(beat) ? 
                                         Image(systemName: "speaker.slash")
                                             .foregroundColor(.white)
-                                            .font(.title3) : nil
+                                            .font(.caption) : nil
+                                    )
+                                    .overlay(
+                                        Text("\(beat)")
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(mutedBeats.contains(beat) ? .clear : .white)
                                     )
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -386,6 +417,12 @@ struct MetronomeView: View {
         }
     }
     
+    private func cleanupMutedBeats() {
+        // Remove any muted beats that are greater than the current beatsPerBar
+        mutedBeats = mutedBeats.filter { $0 <= beatsPerBar }
+        saveMutedBeats()
+    }
+    
     private func incrementBPM() {
         if bpm < 400 {
             bpm += 1
@@ -467,6 +504,7 @@ struct MetronomeView: View {
         }
     }
 }
+
 
 
 #Preview {
