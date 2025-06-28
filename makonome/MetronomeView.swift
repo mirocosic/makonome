@@ -59,6 +59,12 @@ struct MetronomeView: View {
     @FocusState private var isBPMInputFocused: Bool
     @State private var showingSubdivisionPicker = false
     @State private var showingBeatsPerBarPicker = false
+    @State private var isGapTrainerEnabled = UserDefaults.standard.bool(forKey: "GapTrainerEnabled")
+    @State private var gapTrainerNormalBars = UserDefaults.standard.integer(forKey: "GapTrainerNormalBars") != 0 ? UserDefaults.standard.integer(forKey: "GapTrainerNormalBars") : 4
+    @State private var gapTrainerMutedBars = UserDefaults.standard.integer(forKey: "GapTrainerMutedBars") != 0 ? UserDefaults.standard.integer(forKey: "GapTrainerMutedBars") : 4
+    @State private var showingGapTrainerPicker = false
+    @State private var gapTrainerCurrentCycle = 1
+    @State private var gapTrainerInNormalPhase = true
     
     static func isAccentedBeat(beatCount: Int, subdivision: NoteSubdivision) -> Bool {
         return beatCount == 1  // First beat of each bar is accented
@@ -172,50 +178,83 @@ struct MetronomeView: View {
                     }
                 }
                 
-                HStack(spacing: 40) {
-                    VStack {
-                        Text("Subdivision")
-                            .font(.headline)
-                        
-                        Button(action: {
-                            showingSubdivisionPicker = true
-                        }) {
-                            HStack {
-                                Text(subdivision.symbol)
-                                Text(subdivision.rawValue)
-                                Image(systemName: "chevron.down")
+                VStack(spacing: 20) {
+                    HStack(spacing: 40) {
+                        VStack {
+                            Text("Subdivision")
+                                .font(.headline)
+                            
+                            Button(action: {
+                                showingSubdivisionPicker = true
+                            }) {
+                                HStack {
+                                    Text(subdivision.symbol)
+                                    Text(subdivision.rawValue)
+                                    Image(systemName: "chevron.down")
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(8)
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.gray.opacity(0.2))
-                            .cornerRadius(8)
+                            .disabled(isPlaying)
+                            .sheet(isPresented: $showingSubdivisionPicker) {
+                                SubdivisionPickerSheet(subdivision: $subdivision)
+                            }
                         }
-                        .disabled(isPlaying)
-                        .sheet(isPresented: $showingSubdivisionPicker) {
-                            SubdivisionPickerSheet(subdivision: $subdivision)
+                        
+                        VStack {
+                            Text("Beats Per Bar")
+                                .font(.headline)
+                            
+                            Button(action: {
+                                showingBeatsPerBarPicker = true
+                            }) {
+                                HStack {
+                                    Text("\(beatsPerBar)")
+                                    Text(beatsPerBar == 1 ? "beat" : "beats")
+                                    Image(systemName: "chevron.down")
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(8)
+                            }
+                            .disabled(isPlaying)
+                            .sheet(isPresented: $showingBeatsPerBarPicker) {
+                                BeatsPerBarPickerSheet(beatsPerBar: $beatsPerBar, cleanupMutedBeats: cleanupMutedBeats)
+                            }
                         }
                     }
                     
                     VStack {
-                        Text("Beats Per Bar")
+                        Text("Gap Trainer")
                             .font(.headline)
                         
                         Button(action: {
-                            showingBeatsPerBarPicker = true
+                            showingGapTrainerPicker = true
                         }) {
                             HStack {
-                                Text("\(beatsPerBar)")
-                                Text(beatsPerBar == 1 ? "beat" : "beats")
+                                Image(systemName: isGapTrainerEnabled ? "pause.circle.fill" : "pause.circle")
+                                if isGapTrainerEnabled {
+                                    Text("\(gapTrainerNormalBars) normal, \(gapTrainerMutedBars) muted")
+                                } else {
+                                    Text("Off")
+                                }
                                 Image(systemName: "chevron.down")
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(Color.gray.opacity(0.2))
+                            .background(isGapTrainerEnabled ? Color.blue.opacity(0.2) : Color.gray.opacity(0.2))
                             .cornerRadius(8)
                         }
                         .disabled(isPlaying)
-                        .sheet(isPresented: $showingBeatsPerBarPicker) {
-                            BeatsPerBarPickerSheet(beatsPerBar: $beatsPerBar, cleanupMutedBeats: cleanupMutedBeats)
+                        .sheet(isPresented: $showingGapTrainerPicker) {
+                            GapTrainerPickerSheet(
+                                isGapTrainerEnabled: $isGapTrainerEnabled,
+                                gapTrainerNormalBars: $gapTrainerNormalBars,
+                                gapTrainerMutedBars: $gapTrainerMutedBars
+                            )
                         }
                     }
                 }
@@ -271,9 +310,18 @@ struct MetronomeView: View {
                     }
                     
                     if isPlaying {
-                        Text("Bar \(barCount), Beat \(beatCount)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        VStack(spacing: 4) {
+                            Text("Bar \(barCount), Beat \(beatCount)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            
+                            if isGapTrainerEnabled {
+                                Text(gapTrainerInNormalPhase ? "Normal (\(gapTrainerCurrentCycle)/\(gapTrainerNormalBars))" : "Muted (\(gapTrainerCurrentCycle)/\(gapTrainerMutedBars))")
+                                    .font(.caption2)
+                                    .foregroundColor(gapTrainerInNormalPhase ? .blue : .orange)
+                                    .fontWeight(.medium)
+                            }
+                        }
                     }
                 }
                 
@@ -313,6 +361,13 @@ struct MetronomeView: View {
         setupAudio()
         isPlaying = true
         usageTracker.startTracking()
+        
+        // Reset gap trainer state
+        if isGapTrainerEnabled {
+            gapTrainerCurrentCycle = 1
+            gapTrainerInNormalPhase = true
+        }
+        
         playBeat()
         startRegularTimer()
     }
@@ -352,6 +407,27 @@ struct MetronomeView: View {
         if beatCount > beatsPerBar {
             beatCount = 1
             barCount += 1
+            
+            // Gap trainer logic - advance to next bar in cycle
+            if isGapTrainerEnabled {
+                gapTrainerCurrentCycle += 1
+                
+                if gapTrainerInNormalPhase {
+                    // Currently in normal phase
+                    if gapTrainerCurrentCycle > gapTrainerNormalBars {
+                        // Switch to muted phase
+                        gapTrainerInNormalPhase = false
+                        gapTrainerCurrentCycle = 1
+                    }
+                } else {
+                    // Currently in muted phase
+                    if gapTrainerCurrentCycle > gapTrainerMutedBars {
+                        // Switch back to normal phase
+                        gapTrainerInNormalPhase = true
+                        gapTrainerCurrentCycle = 1
+                    }
+                }
+            }
         }
         
         playClick()
@@ -366,6 +442,15 @@ struct MetronomeView: View {
     }
     
     private func beatIndicatorColor(for beat: Int) -> Color {
+        // Gap trainer muted phase overrides everything
+        if isGapTrainerEnabled && !gapTrainerInNormalPhase && isPlaying {
+            if beatCount == beat {
+                return Color.orange.opacity(0.8) // Muted phase active beat
+            } else {
+                return Color.gray.opacity(0.4) // Muted phase inactive beats
+            }
+        }
+        
         if mutedBeats.contains(beat) {
             return Color.gray.opacity(0.6)
         } else if isPlaying && beatCount == beat {
@@ -393,6 +478,12 @@ struct MetronomeView: View {
     }
     
     private func playClick() {
+        // Check gap trainer muting first (overrides individual beat muting)
+        if isGapTrainerEnabled && !gapTrainerInNormalPhase {
+            return // Muted phase - no sound
+        }
+        
+        // Regular muting checks
         guard !isMuted && !mutedBeats.contains(beatCount) else { return }
         
         if Self.isAccentedBeat(beatCount: beatCount, subdivision: subdivision) {
