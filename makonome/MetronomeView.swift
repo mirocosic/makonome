@@ -15,9 +15,9 @@ enum BeatState: String, CaseIterable, Codable {
     
     func next() -> BeatState {
         switch self {
-        case .normal: return .muted
-        case .muted: return .accented
-        case .accented: return .normal
+        case .normal: return .accented
+        case .accented: return .muted
+        case .muted: return .normal
         }
     }
 }
