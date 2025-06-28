@@ -79,6 +79,11 @@ struct MetronomeView: View {
     @State private var showingGapTrainerPicker = false
     @State private var gapTrainerCurrentCycle = 1
     @State private var gapTrainerInNormalPhase = true
+    @State private var isTempoChangerEnabled = UserDefaults.standard.bool(forKey: "TempoChangerEnabled")
+    @State private var tempoChangerBPMIncrement = UserDefaults.standard.integer(forKey: "TempoChangerBPMIncrement") != 0 ? UserDefaults.standard.integer(forKey: "TempoChangerBPMIncrement") : 2
+    @State private var tempoChangerBarInterval = UserDefaults.standard.integer(forKey: "TempoChangerBarInterval") != 0 ? UserDefaults.standard.integer(forKey: "TempoChangerBarInterval") : 4
+    @State private var tempoChangerStartingBar = 1
+    @State private var showingTempoChangerPicker = false
     
     
     static func calculateInterval(bpm: Double, subdivision: NoteSubdivision) -> TimeInterval {
@@ -268,6 +273,37 @@ struct MetronomeView: View {
                             )
                         }
                     }
+                    
+                    VStack {
+                        Text("Tempo Changer")
+                            .font(.headline)
+                        
+                        Button(action: {
+                            showingTempoChangerPicker = true
+                        }) {
+                            HStack {
+                                Image(systemName: isTempoChangerEnabled ? "speedometer" : "speedometer")
+                                if isTempoChangerEnabled {
+                                    Text("+\(tempoChangerBPMIncrement) every \(tempoChangerBarInterval) bars")
+                                } else {
+                                    Text("Off")
+                                }
+                                Image(systemName: "chevron.down")
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(isTempoChangerEnabled ? Color.green.opacity(0.2) : Color.gray.opacity(0.2))
+                            .cornerRadius(8)
+                        }
+                        .disabled(isPlaying)
+                        .sheet(isPresented: $showingTempoChangerPicker) {
+                            TempoChangerPickerSheet(
+                                isTempoChangerEnabled: $isTempoChangerEnabled,
+                                tempoChangerBPMIncrement: $tempoChangerBPMIncrement,
+                                tempoChangerBarInterval: $tempoChangerBarInterval
+                            )
+                        }
+                    }
                 }
                 
                 HStack(spacing: 20) {
@@ -329,6 +365,15 @@ struct MetronomeView: View {
                                     .foregroundColor(gapTrainerInNormalPhase ? .blue : .orange)
                                     .fontWeight(.medium)
                             }
+                            
+                            if isTempoChangerEnabled {
+                                let barsCompleted = barCount - tempoChangerStartingBar
+                                let nextIncreaseIn = tempoChangerBarInterval - (barsCompleted % tempoChangerBarInterval)
+                                Text("Tempo +\(tempoChangerBPMIncrement) in \(nextIncreaseIn) bars")
+                                    .font(.caption2)
+                                    .foregroundColor(.green)
+                                    .fontWeight(.medium)
+                            }
                         }
                     }
                 }
@@ -376,6 +421,11 @@ struct MetronomeView: View {
             gapTrainerInNormalPhase = true
         }
         
+        // Reset tempo changer state
+        if isTempoChangerEnabled {
+            tempoChangerStartingBar = barCount
+        }
+        
         playBeat()
         startRegularTimer()
     }
@@ -415,6 +465,20 @@ struct MetronomeView: View {
         if beatCount > beatsPerBar {
             beatCount = 1
             barCount += 1
+            
+            // Tempo changer logic - check if we should increase tempo BEFORE processing the new bar
+            if isTempoChangerEnabled {
+                let barsCompleted = barCount - tempoChangerStartingBar
+                if barsCompleted > 0 && barsCompleted % tempoChangerBarInterval == 0 {
+                    let newBPM = min(bpm + Double(tempoChangerBPMIncrement), 400.0)
+                    if newBPM != bpm {
+                        bpm = newBPM
+                        UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+                        updateBPMWhilePlaying()
+                        return // Exit early to let updateBPMWhilePlaying() handle the timing
+                    }
+                }
+            }
             
             // Gap trainer logic - advance to next bar in cycle
             if isGapTrainerEnabled {
