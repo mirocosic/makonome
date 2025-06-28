@@ -86,9 +86,11 @@ struct SimpleBPMScrollWheel: View {
         let newBPM = Double(minBPM + clampedIndex)
         
         if newBPM != bpm {
+            print("🎵 ScrollWheel: Changing BPM from \(bpm) to \(newBPM)")
             isUpdatingFromScroll = true
             bpm = newBPM
             UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+            print("🎵 ScrollWheel: Saved BPM \(bpm) to UserDefaults")
             
             // Reset flag after a short delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

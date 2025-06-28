@@ -49,7 +49,12 @@ enum NoteSubdivision: String, CaseIterable, Codable {
 
 struct MetronomeView: View {
     @ObservedObject private var usageTracker = UsageTracker.shared
-    @State private var bpm: Double = UserDefaults.standard.double(forKey: "MetronomeBPM") != 0 ? UserDefaults.standard.double(forKey: "MetronomeBPM") : 120
+    @State private var bpm: Double = {
+        let savedBPM = UserDefaults.standard.double(forKey: "MetronomeBPM")
+        let finalBPM = savedBPM != 0 ? savedBPM : 120
+        print("🎵 Loading BPM from UserDefaults: savedBPM=\(savedBPM), finalBPM=\(finalBPM)")
+        return finalBPM
+    }()
     @State private var isPlaying = false
     @State private var timer: Timer?
     @State private var audioPlayer: AVAudioPlayer?
@@ -166,18 +171,18 @@ struct MetronomeView: View {
                         .disabled(bpm >= 400)
                     }
                     
-                    // Slider(value: $bpm, in: 40...400, step: 1)
-                    //     .padding(.horizontal)
-                    //     .onChange(of: bpm) { _, _ in
-                    //         updateBPMWhilePlaying()
-                    //         UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
-                    //     }
+                    Slider(value: $bpm, in: 40...400, step: 1)
+                        .padding(.horizontal)
+                        .onChange(of: bpm) { _, _ in
+                            updateBPMWhilePlaying()
+                            UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+                        }
                     
                     // BPMScrollWheel(bpm: $bpm)
                     //     .padding(.horizontal)
                     
-                    SimpleBPMScrollWheel(bpm: $bpm)
-                        .padding(.horizontal)
+                    // SimpleBPMScrollWheel(bpm: $bpm)
+                    //     .padding(.horizontal)
                     
                     Button(action: {
                         handleTapTempo()
@@ -411,6 +416,7 @@ struct MetronomeView: View {
     }
     
     private func startMetronome() {
+        print("🎵 Starting metronome at BPM: \(bpm)")
         setupAudio()
         isPlaying = true
         usageTracker.startTracking()
@@ -472,10 +478,13 @@ struct MetronomeView: View {
                 if barsCompleted > 0 && barsCompleted % tempoChangerBarInterval == 0 {
                     let newBPM = min(bpm + Double(tempoChangerBPMIncrement), 400.0)
                     if newBPM != bpm {
+                        print("🎵 Tempo Changer: Increasing BPM from \(bpm) to \(newBPM)")
                         bpm = newBPM
                         UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
-                        updateBPMWhilePlaying()
-                        return // Exit early to let updateBPMWhilePlaying() handle the timing
+                        print("🎵 Tempo Changer: Saved BPM \(bpm) to UserDefaults")
+                        // Update timer with new tempo for next beats
+                        timer?.invalidate()
+                        startRegularTimer()
                     }
                 }
             }
