@@ -8,6 +8,20 @@
 import SwiftUI
 import AVFoundation
 
+enum BeatState: String, CaseIterable, Codable {
+    case normal = "normal"
+    case muted = "muted"
+    case accented = "accented"
+    
+    func next() -> BeatState {
+        switch self {
+        case .normal: return .accented
+        case .accented: return .muted
+        case .muted: return .normal
+        }
+    }
+}
+
 enum NoteSubdivision: String, CaseIterable, Codable {
     case quarter = "Quarter Notes"
     case eighth = "Eighth Notes"
@@ -35,7 +49,12 @@ enum NoteSubdivision: String, CaseIterable, Codable {
 
 struct MetronomeView: View {
     @ObservedObject private var usageTracker = UsageTracker.shared
-    @State private var bpm: Double = UserDefaults.standard.double(forKey: "MetronomeBPM") != 0 ? UserDefaults.standard.double(forKey: "MetronomeBPM") : 120
+    @State private var bpm: Double = {
+        let savedBPM = UserDefaults.standard.double(forKey: "MetronomeBPM")
+        let finalBPM = savedBPM != 0 ? savedBPM : 120
+        print("🎵 Loading BPM from UserDefaults: savedBPM=\(savedBPM), finalBPM=\(finalBPM)")
+        return finalBPM
+    }()
     @State private var isPlaying = false
     @State private var timer: Timer?
     @State private var audioPlayer: AVAudioPlayer?
@@ -45,26 +64,46 @@ struct MetronomeView: View {
     @State private var subdivision: NoteSubdivision = NoteSubdivision(rawValue: UserDefaults.standard.string(forKey: "MetronomeSubdivision") ?? "") ?? .quarter
     @State private var lastBeatTime: Date?
     @State private var isMuted = UserDefaults.standard.bool(forKey: "MetronomeIsMuted")
-    @State private var mutedBeats: Set<Int> = {
-        let savedData = UserDefaults.standard.data(forKey: "MetronomeMutedBeats")
-        if let data = savedData, let decoded = try? JSONDecoder().decode(Set<Int>.self, from: data) {
+    @State private var beatStates: [Int: BeatState] = {
+        let savedData = UserDefaults.standard.data(forKey: "MetronomeBeatStates")
+        if let data = savedData, let decoded = try? JSONDecoder().decode([Int: BeatState].self, from: data) {
             return decoded
         }
-        return Set<Int>()
+        return [:]
     }()
     @State private var tapTimes: [Date] = []
     @State private var tapTimer: Timer?
     @State private var isEditingBPM = false
     @State private var bpmInputText = ""
     @FocusState private var isBPMInputFocused: Bool
+    @State private var showingSubdivisionPicker = false
+    @State private var showingBeatsPerBarPicker = false
+    @State private var isGapTrainerEnabled = UserDefaults.standard.bool(forKey: "GapTrainerEnabled")
+    @State private var gapTrainerNormalBars = UserDefaults.standard.integer(forKey: "GapTrainerNormalBars") != 0 ? UserDefaults.standard.integer(forKey: "GapTrainerNormalBars") : 4
+    @State private var gapTrainerMutedBars = UserDefaults.standard.integer(forKey: "GapTrainerMutedBars") != 0 ? UserDefaults.standard.integer(forKey: "GapTrainerMutedBars") : 4
+    @State private var showingGapTrainerPicker = false
+    @State private var gapTrainerCurrentCycle = 1
+    @State private var gapTrainerInNormalPhase = true
+    @State private var isTempoChangerEnabled = UserDefaults.standard.bool(forKey: "TempoChangerEnabled")
+    @State private var tempoChangerBPMIncrement = UserDefaults.standard.integer(forKey: "TempoChangerBPMIncrement") != 0 ? UserDefaults.standard.integer(forKey: "TempoChangerBPMIncrement") : 2
+    @State private var tempoChangerBarInterval = UserDefaults.standard.integer(forKey: "TempoChangerBarInterval") != 0 ? UserDefaults.standard.integer(forKey: "TempoChangerBarInterval") : 4
+    @State private var tempoChangerStartingBar = 1
+    @State private var showingTempoChangerPicker = false
     
-    static func isAccentedBeat(beatCount: Int, subdivision: NoteSubdivision) -> Bool {
-        return beatCount == 1  // First beat of each bar is accented
-    }
     
     static func calculateInterval(bpm: Double, subdivision: NoteSubdivision) -> TimeInterval {
         let baseInterval = 60.0 / bpm
         return baseInterval / subdivision.multiplier
+    }
+    
+    var beatIndicatorSize: CGFloat {
+        // Responsive sizing based on number of beats
+        switch beatsPerBar {
+        case 1...4: return 50
+        case 5...8: return 45
+        case 9...12: return 40
+        default: return 35 // 13-16 beats
+        }
     }
     
     var body: some View {
@@ -139,6 +178,12 @@ struct MetronomeView: View {
                             UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
                         }
                     
+                    // BPMScrollWheel(bpm: $bpm)
+                    //     .padding(.horizontal)
+                    
+                    // SimpleBPMScrollWheel(bpm: $bpm)
+                    //     .padding(.horizontal)
+                    
                     Button(action: {
                         handleTapTempo()
                     }) {
@@ -154,39 +199,116 @@ struct MetronomeView: View {
                     }
                 }
                 
-                VStack {
-                    Text("Subdivision")
-                        .font(.headline)
-                    
-                    Menu {
-                        ForEach(NoteSubdivision.allCases, id: \.self) { subdivision in
+                VStack(spacing: 20) {
+                    HStack(spacing: 40) {
+                        VStack {
+                            Text("Subdivision")
+                                .font(.headline)
+                            
                             Button(action: {
-                                self.subdivision = subdivision
-                                UserDefaults.standard.set(subdivision.rawValue, forKey: "MetronomeSubdivision")
+                                showingSubdivisionPicker = true
                             }) {
                                 HStack {
                                     Text(subdivision.symbol)
                                     Text(subdivision.rawValue)
-                                    Spacer()
-                                    if self.subdivision == subdivision {
-                                        Image(systemName: "checkmark")
-                                    }
+                                    Image(systemName: "chevron.down")
                                 }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(8)
                             }
-                            .accessibilityLabel("\(subdivision.symbol) \(subdivision.rawValue)")
+                            .disabled(isPlaying)
+                            .sheet(isPresented: $showingSubdivisionPicker) {
+                                SubdivisionPickerSheet(subdivision: $subdivision)
+                            }
                         }
-                    } label: {
-                        HStack {
-                            Text(subdivision.symbol)
-                            Text(subdivision.rawValue)
-                            Image(systemName: "chevron.down")
+                        
+                        VStack {
+                            Text("Beats Per Bar")
+                                .font(.headline)
+                            
+                            Button(action: {
+                                showingBeatsPerBarPicker = true
+                            }) {
+                                HStack {
+                                    Text("\(beatsPerBar)")
+                                    Text(beatsPerBar == 1 ? "beat" : "beats")
+                                    Image(systemName: "chevron.down")
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(8)
+                            }
+                            .disabled(isPlaying)
+                            .sheet(isPresented: $showingBeatsPerBarPicker) {
+                                BeatsPerBarPickerSheet(beatsPerBar: $beatsPerBar, cleanupMutedBeats: cleanupBeatStates)
+                            }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.gray.opacity(0.2))
-                        .cornerRadius(8)
                     }
-                    .disabled(isPlaying)
+                    
+                    VStack {
+                        Text("Gap Trainer")
+                            .font(.headline)
+                        
+                        Button(action: {
+                            showingGapTrainerPicker = true
+                        }) {
+                            HStack {
+                                Image(systemName: isGapTrainerEnabled ? "pause.circle.fill" : "pause.circle")
+                                if isGapTrainerEnabled {
+                                    Text("\(gapTrainerNormalBars) normal, \(gapTrainerMutedBars) muted")
+                                } else {
+                                    Text("Off")
+                                }
+                                Image(systemName: "chevron.down")
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(isGapTrainerEnabled ? Color.blue.opacity(0.2) : Color.gray.opacity(0.2))
+                            .cornerRadius(8)
+                        }
+                        .disabled(isPlaying)
+                        .sheet(isPresented: $showingGapTrainerPicker) {
+                            GapTrainerPickerSheet(
+                                isGapTrainerEnabled: $isGapTrainerEnabled,
+                                gapTrainerNormalBars: $gapTrainerNormalBars,
+                                gapTrainerMutedBars: $gapTrainerMutedBars
+                            )
+                        }
+                    }
+                    
+                    VStack {
+                        Text("Tempo Changer")
+                            .font(.headline)
+                        
+                        Button(action: {
+                            showingTempoChangerPicker = true
+                        }) {
+                            HStack {
+                                Image(systemName: isTempoChangerEnabled ? "speedometer" : "speedometer")
+                                if isTempoChangerEnabled {
+                                    Text("+\(tempoChangerBPMIncrement) every \(tempoChangerBarInterval) bars")
+                                } else {
+                                    Text("Off")
+                                }
+                                Image(systemName: "chevron.down")
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(isTempoChangerEnabled ? Color.green.opacity(0.2) : Color.gray.opacity(0.2))
+                            .cornerRadius(8)
+                        }
+                        .disabled(isPlaying)
+                        .sheet(isPresented: $showingTempoChangerPicker) {
+                            TempoChangerPickerSheet(
+                                isTempoChangerEnabled: $isTempoChangerEnabled,
+                                tempoChangerBPMIncrement: $tempoChangerBPMIncrement,
+                                tempoChangerBarInterval: $tempoChangerBarInterval
+                            )
+                        }
+                    }
                 }
                 
                 HStack(spacing: 20) {
@@ -208,23 +330,26 @@ struct MetronomeView: View {
                 }
                 
                 VStack {
-                    HStack(spacing: 12) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: min(beatsPerBar, 8)), spacing: 12) {
                         ForEach(1...beatsPerBar, id: \.self) { beat in
                             Button(action: {
-                                toggleBeatMute(beat: beat)
+                                toggleBeatState(beat: beat)
                             }) {
                                 Circle()
                                     .fill(beatIndicatorColor(for: beat))
-                                    .frame(width: 50, height: 50)
+                                    .frame(width: beatIndicatorSize, height: beatIndicatorSize)
                                     .overlay(
                                         Circle()
                                             .stroke(beatIndicatorBorder(for: beat), lineWidth: 3)
                                     )
                                     .overlay(
-                                        mutedBeats.contains(beat) ? 
-                                        Image(systemName: "speaker.slash")
-                                            .foregroundColor(.white)
-                                            .font(.title3) : nil
+                                        beatIndicatorIcon(for: beat)
+                                    )
+                                    .overlay(
+                                        Text("\(beat)")
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(beatIndicatorTextColor(for: beat))
                                     )
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -234,9 +359,27 @@ struct MetronomeView: View {
                     }
                     
                     if isPlaying {
-                        Text("Bar \(barCount), Beat \(beatCount)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        VStack(spacing: 4) {
+                            Text("Bar \(barCount), Beat \(beatCount)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            
+                            if isGapTrainerEnabled {
+                                Text(gapTrainerInNormalPhase ? "Normal (\(gapTrainerCurrentCycle)/\(gapTrainerNormalBars))" : "Muted (\(gapTrainerCurrentCycle)/\(gapTrainerMutedBars))")
+                                    .font(.caption2)
+                                    .foregroundColor(gapTrainerInNormalPhase ? .blue : .orange)
+                                    .fontWeight(.medium)
+                            }
+                            
+                            if isTempoChangerEnabled {
+                                let barsCompleted = barCount - tempoChangerStartingBar
+                                let nextIncreaseIn = tempoChangerBarInterval - (barsCompleted % tempoChangerBarInterval)
+                                Text("Tempo +\(tempoChangerBPMIncrement) in \(nextIncreaseIn) bars")
+                                    .font(.caption2)
+                                    .foregroundColor(.green)
+                                    .fontWeight(.medium)
+                            }
+                        }
                     }
                 }
                 
@@ -254,7 +397,7 @@ struct MetronomeView: View {
                         currentBPM: $bpm,
                         currentBeatsPerBar: $beatsPerBar,
                         currentSubdivision: $subdivision,
-                        currentMutedBeats: $mutedBeats
+                        currentBeatStates: $beatStates
                     )) {
                         Image(systemName: "list.bullet")
                     }
@@ -273,9 +416,22 @@ struct MetronomeView: View {
     }
     
     private func startMetronome() {
+        print("🎵 Starting metronome at BPM: \(bpm)")
         setupAudio()
         isPlaying = true
         usageTracker.startTracking()
+        
+        // Reset gap trainer state
+        if isGapTrainerEnabled {
+            gapTrainerCurrentCycle = 1
+            gapTrainerInNormalPhase = true
+        }
+        
+        // Reset tempo changer state
+        if isTempoChangerEnabled {
+            tempoChangerStartingBar = barCount
+        }
+        
         playBeat()
         startRegularTimer()
     }
@@ -315,6 +471,44 @@ struct MetronomeView: View {
         if beatCount > beatsPerBar {
             beatCount = 1
             barCount += 1
+            
+            // Tempo changer logic - check if we should increase tempo BEFORE processing the new bar
+            if isTempoChangerEnabled {
+                let barsCompleted = barCount - tempoChangerStartingBar
+                if barsCompleted > 0 && barsCompleted % tempoChangerBarInterval == 0 {
+                    let newBPM = min(bpm + Double(tempoChangerBPMIncrement), 400.0)
+                    if newBPM != bpm {
+                        print("🎵 Tempo Changer: Increasing BPM from \(bpm) to \(newBPM)")
+                        bpm = newBPM
+                        UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+                        print("🎵 Tempo Changer: Saved BPM \(bpm) to UserDefaults")
+                        // Update timer with new tempo for next beats
+                        timer?.invalidate()
+                        startRegularTimer()
+                    }
+                }
+            }
+            
+            // Gap trainer logic - advance to next bar in cycle
+            if isGapTrainerEnabled {
+                gapTrainerCurrentCycle += 1
+                
+                if gapTrainerInNormalPhase {
+                    // Currently in normal phase
+                    if gapTrainerCurrentCycle > gapTrainerNormalBars {
+                        // Switch to muted phase
+                        gapTrainerInNormalPhase = false
+                        gapTrainerCurrentCycle = 1
+                    }
+                } else {
+                    // Currently in muted phase
+                    if gapTrainerCurrentCycle > gapTrainerMutedBars {
+                        // Switch back to normal phase
+                        gapTrainerInNormalPhase = true
+                        gapTrainerCurrentCycle = 1
+                    }
+                }
+            }
         }
         
         playClick()
@@ -329,20 +523,72 @@ struct MetronomeView: View {
     }
     
     private func beatIndicatorColor(for beat: Int) -> Color {
-        if mutedBeats.contains(beat) {
+        // Gap trainer muted phase overrides everything
+        if isGapTrainerEnabled && !gapTrainerInNormalPhase && isPlaying {
+            if beatCount == beat {
+                return Color.orange.opacity(0.8) // Muted phase active beat
+            } else {
+                return Color.gray.opacity(0.4) // Muted phase inactive beats
+            }
+        }
+        
+        let beatState = beatStates[beat] ?? .normal
+        
+        switch beatState {
+        case .muted:
             return Color.gray.opacity(0.6)
-        } else if isPlaying && beatCount == beat {
-            return beat == 1 ? Color.red : Color.blue
-        } else {
-            return Color.gray.opacity(0.3)
+        case .accented:
+            if isPlaying && beatCount == beat {
+                return Color.red.opacity(0.9)
+            } else {
+                return Color.red.opacity(0.4)
+            }
+        case .normal:
+            if isPlaying && beatCount == beat {
+                return Color.blue.opacity(0.9)
+            } else {
+                return Color.gray.opacity(0.3)
+            }
         }
     }
     
     private func beatIndicatorBorder(for beat: Int) -> Color {
-        if beat == 1 {
-            return Color.red.opacity(0.5)
-        } else {
+        let beatState = beatStates[beat] ?? .normal
+        switch beatState {
+        case .accented:
+            return Color.red.opacity(0.8)
+        default:
             return Color.clear
+        }
+    }
+    
+    private func beatIndicatorIcon(for beat: Int) -> some View {
+        let beatState = beatStates[beat] ?? .normal
+        switch beatState {
+        case .muted:
+            return AnyView(
+                Image(systemName: "speaker.slash")
+                    .foregroundColor(.white)
+                    .font(.caption)
+            )
+        case .accented:
+            return AnyView(
+                Image(systemName: "star.fill")
+                    .foregroundColor(.white)
+                    .font(.caption2)
+            )
+        case .normal:
+            return AnyView(EmptyView())
+        }
+    }
+    
+    private func beatIndicatorTextColor(for beat: Int) -> Color {
+        let beatState = beatStates[beat] ?? .normal
+        switch beatState {
+        case .muted:
+            return .clear
+        default:
+            return .white
         }
     }
     
@@ -356,28 +602,42 @@ struct MetronomeView: View {
     }
     
     private func playClick() {
-        guard !isMuted && !mutedBeats.contains(beatCount) else { return }
+        // Check gap trainer muting first (overrides individual beat muting)
+        if isGapTrainerEnabled && !gapTrainerInNormalPhase {
+            return // Muted phase - no sound
+        }
         
-        if Self.isAccentedBeat(beatCount: beatCount, subdivision: subdivision) {
+        // Regular muting checks
+        guard !isMuted else { return }
+        
+        let beatState = beatStates[beatCount] ?? .normal
+        
+        switch beatState {
+        case .muted:
+            return // No sound for muted beats
+        case .accented:
             AudioServicesPlaySystemSound(1103) // 1103 is louder click sound
-        } else {
+        case .normal:
             AudioServicesPlaySystemSound(1104) // 1104 is click sound
         }
     }
     
-    private func toggleBeatMute(beat: Int) {
-        if mutedBeats.contains(beat) {
-            mutedBeats.remove(beat)
-        } else {
-            mutedBeats.insert(beat)
-        }
-        saveMutedBeats()
+    private func toggleBeatState(beat: Int) {
+        let currentState = beatStates[beat] ?? .normal
+        beatStates[beat] = currentState.next()
+        saveBeatStates()
     }
     
-    private func saveMutedBeats() {
-        if let encoded = try? JSONEncoder().encode(mutedBeats) {
-            UserDefaults.standard.set(encoded, forKey: "MetronomeMutedBeats")
+    private func saveBeatStates() {
+        if let encoded = try? JSONEncoder().encode(beatStates) {
+            UserDefaults.standard.set(encoded, forKey: "MetronomeBeatStates")
         }
+    }
+    
+    private func cleanupBeatStates() {
+        // Remove any beat states that are greater than the current beatsPerBar
+        beatStates = beatStates.filter { $0.key <= beatsPerBar }
+        saveBeatStates()
     }
     
     private func incrementBPM() {
@@ -461,6 +721,7 @@ struct MetronomeView: View {
         }
     }
 }
+
 
 
 #Preview {

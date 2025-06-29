@@ -13,24 +13,24 @@ struct MetronomePreset: Identifiable, Codable {
     var bpm: Double
     var beatsPerBar: Int
     var subdivision: NoteSubdivision
-    var mutedBeats: Set<Int>
+    var beatStates: [Int: BeatState]
     
-    init(name: String, bpm: Double, beatsPerBar: Int, subdivision: NoteSubdivision, mutedBeats: Set<Int> = []) {
+    init(name: String, bpm: Double, beatsPerBar: Int, subdivision: NoteSubdivision, beatStates: [Int: BeatState] = [:]) {
         self.id = UUID()
         self.name = name
         self.bpm = bpm
         self.beatsPerBar = beatsPerBar
         self.subdivision = subdivision
-        self.mutedBeats = mutedBeats
+        self.beatStates = beatStates
     }
     
-    init(id: UUID, name: String, bpm: Double, beatsPerBar: Int, subdivision: NoteSubdivision, mutedBeats: Set<Int> = []) {
+    init(id: UUID, name: String, bpm: Double, beatsPerBar: Int, subdivision: NoteSubdivision, beatStates: [Int: BeatState] = [:]) {
         self.id = id
         self.name = name
         self.bpm = bpm
         self.beatsPerBar = beatsPerBar
         self.subdivision = subdivision
-        self.mutedBeats = mutedBeats
+        self.beatStates = beatStates
     }
 }
 
@@ -42,7 +42,7 @@ struct PresetView: View {
     @Binding var currentBPM: Double
     @Binding var currentBeatsPerBar: Int
     @Binding var currentSubdivision: NoteSubdivision
-    @Binding var currentMutedBeats: Set<Int>
+    @Binding var currentBeatStates: [Int: BeatState]
     
     var body: some View {
         NavigationView {
@@ -96,7 +96,7 @@ struct PresetView: View {
                 currentBPM: currentBPM,
                 currentBeatsPerBar: currentBeatsPerBar,
                 currentSubdivision: currentSubdivision,
-                currentMutedBeats: currentMutedBeats
+                currentBeatStates: currentBeatStates
             ) { preset in
                 addPreset(preset)
             }
@@ -115,14 +115,14 @@ struct PresetView: View {
         currentBPM = preset.bpm
         currentBeatsPerBar = preset.beatsPerBar
         currentSubdivision = preset.subdivision
-        currentMutedBeats = preset.mutedBeats
+        currentBeatStates = preset.beatStates
         
         UserDefaults.standard.set(preset.bpm, forKey: "MetronomeBPM")
         UserDefaults.standard.set(preset.beatsPerBar, forKey: "MetronomeBeatsPerBar")
         UserDefaults.standard.set(preset.subdivision.rawValue, forKey: "MetronomeSubdivision")
         
-        if let encoded = try? JSONEncoder().encode(preset.mutedBeats) {
-            UserDefaults.standard.set(encoded, forKey: "MetronomeMutedBeats")
+        if let encoded = try? JSONEncoder().encode(preset.beatStates) {
+            UserDefaults.standard.set(encoded, forKey: "MetronomeBeatStates")
         }
     }
     
@@ -201,14 +201,30 @@ struct PresetRowView: View {
                     }
                 }
                 
-                if !preset.mutedBeats.isEmpty {
-                    HStack(spacing: 4) {
-                        Image(systemName: "speaker.slash")
-                            .font(.caption)
-                            .foregroundColor(.orange)
-                        Text("Beats \(preset.mutedBeats.sorted().map(String.init).joined(separator: ", ")) muted")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                if !preset.beatStates.isEmpty {
+                    let mutedBeats = preset.beatStates.filter { $0.value == .muted }.keys.sorted()
+                    let accentedBeats = preset.beatStates.filter { $0.value == .accented }.keys.sorted()
+                    
+                    if !mutedBeats.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "speaker.slash")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                            Text("Beats \(mutedBeats.map(String.init).joined(separator: ", ")) muted")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    if !accentedBeats.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "star.fill")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                            Text("Beats \(accentedBeats.map(String.init).joined(separator: ", ")) accented")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
             }
@@ -238,7 +254,7 @@ struct AddPresetView: View {
     let currentBPM: Double
     let currentBeatsPerBar: Int
     let currentSubdivision: NoteSubdivision
-    let currentMutedBeats: Set<Int>
+    let currentBeatStates: [Int: BeatState]
     let onSave: (MetronomePreset) -> Void
     
     var body: some View {
@@ -270,12 +286,26 @@ struct AddPresetView: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    if !currentMutedBeats.isEmpty {
-                        HStack {
-                            Text("Muted Beats")
-                            Spacer()
-                            Text(currentMutedBeats.sorted().map(String.init).joined(separator: ", "))
-                                .foregroundColor(.secondary)
+                    if !currentBeatStates.isEmpty {
+                        let mutedBeats = currentBeatStates.filter { $0.value == .muted }.keys.sorted()
+                        let accentedBeats = currentBeatStates.filter { $0.value == .accented }.keys.sorted()
+                        
+                        if !mutedBeats.isEmpty {
+                            HStack {
+                                Text("Muted Beats")
+                                Spacer()
+                                Text(mutedBeats.map(String.init).joined(separator: ", "))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        if !accentedBeats.isEmpty {
+                            HStack {
+                                Text("Accented Beats")
+                                Spacer()
+                                Text(accentedBeats.map(String.init).joined(separator: ", "))
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                 }
@@ -296,7 +326,7 @@ struct AddPresetView: View {
                             bpm: currentBPM,
                             beatsPerBar: currentBeatsPerBar,
                             subdivision: currentSubdivision,
-                            mutedBeats: currentMutedBeats
+                            beatStates: currentBeatStates
                         )
                         onSave(preset)
                         dismiss()
@@ -348,12 +378,26 @@ struct EditPresetView: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    if !preset.mutedBeats.isEmpty {
-                        HStack {
-                            Text("Muted Beats")
-                            Spacer()
-                            Text(preset.mutedBeats.sorted().map(String.init).joined(separator: ", "))
-                                .foregroundColor(.secondary)
+                    if !preset.beatStates.isEmpty {
+                        let mutedBeats = preset.beatStates.filter { $0.value == .muted }.keys.sorted()
+                        let accentedBeats = preset.beatStates.filter { $0.value == .accented }.keys.sorted()
+                        
+                        if !mutedBeats.isEmpty {
+                            HStack {
+                                Text("Muted Beats")
+                                Spacer()
+                                Text(mutedBeats.map(String.init).joined(separator: ", "))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        if !accentedBeats.isEmpty {
+                            HStack {
+                                Text("Accented Beats")
+                                Spacer()
+                                Text(accentedBeats.map(String.init).joined(separator: ", "))
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                 }
@@ -375,7 +419,7 @@ struct EditPresetView: View {
                             bpm: preset.bpm,
                             beatsPerBar: preset.beatsPerBar,
                             subdivision: preset.subdivision,
-                            mutedBeats: preset.mutedBeats
+                            beatStates: preset.beatStates
                         )
                         onSave(updatedPreset)
                         dismiss()
@@ -391,6 +435,6 @@ struct EditPresetView: View {
         currentBPM: .constant(120),
         currentBeatsPerBar: .constant(4),
         currentSubdivision: .constant(.quarter),
-        currentMutedBeats: .constant([])
+        currentBeatStates: .constant([:])
     )
 }

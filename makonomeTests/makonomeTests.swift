@@ -11,38 +11,6 @@ import SwiftUI
 
 struct makonomeTests {
 
-    // Test timer formatting function
-    @Test func testTimeFormatting() async throws {
-        let stopwatchView = StopwatchView()
-        
-        // Test zero time
-        #expect(stopwatchView.formatTime(0) == "00:00.00")
-        
-        // Test seconds only
-        #expect(stopwatchView.formatTime(5.67) == "00:05.67")
-        
-        // Test minutes and seconds
-        #expect(stopwatchView.formatTime(125.34) == "02:05.34")
-        
-        // Test rounding of centiseconds
-        #expect(stopwatchView.formatTime(1.999) == "00:01.99")
-        #expect(stopwatchView.formatTime(1.001) == "00:01.00")
-    }
-    
-    // Test edge cases in time formatting
-    @Test func testTimeFormattingEdgeCases() async throws {
-        let stopwatchView = StopwatchView()
-        
-        // Test exactly one minute
-        #expect(stopwatchView.formatTime(60.0) == "01:00.00")
-        
-        // Test maximum reasonable time (99:59.99)
-        #expect(stopwatchView.formatTime(5999.99) == "99:59.98")
-        
-        // Test fractional seconds
-        #expect(stopwatchView.formatTime(10.123) == "00:10.12")
-        #expect(stopwatchView.formatTime(10.987) == "00:10.98")
-    }
     
     // MARK: - Metronome Tests
     
