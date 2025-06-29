@@ -15,6 +15,7 @@ class SessionManager: ObservableObject {
     
     private let sessionsKey = "PracticeSessions"
     private let currentSessionKey = "CurrentPracticeSession"
+    private let metronomeManager = MetronomeManager.shared
     
     private init() {
         loadSessions()
@@ -23,21 +24,33 @@ class SessionManager: ObservableObject {
     
     // MARK: - Session Management
     
-    func startSession(name: String = "Practice Session", targetDuration: TimeInterval? = nil, notes: String = "") {
+    func startSession(name: String = "Practice Session", targetDuration: TimeInterval? = nil, notes: String = "", shouldStartMetronome: Bool = UserDefaults.standard.bool(forKey: "AutoStartMetronomeWithPractice")) {
         // Complete any existing session first
         if let current = currentSession {
             completeCurrentSession()
         }
         
-        let newSession = PracticeSession(sessionName: name, targetDuration: targetDuration, notes: notes)
+        let newSession = PracticeSession(sessionName: name, targetDuration: targetDuration, notes: notes, shouldStartMetronome: shouldStartMetronome)
         currentSession = newSession
         saveCurrentSession()
+        
+        // Start metronome if requested
+        if shouldStartMetronome {
+            metronomeManager.startMetronome()
+            print("📝 Started metronome with practice session")
+        }
         
         print("📝 Started new practice session: \(name)")
     }
     
     func completeCurrentSession() {
         guard var current = currentSession else { return }
+        
+        // Stop metronome if it was started with this session
+        if current.shouldStartMetronome && metronomeManager.isPlaying {
+            metronomeManager.stopMetronome()
+            print("📝 Stopped metronome with practice session")
+        }
         
         current.complete()
         sessions.append(current)

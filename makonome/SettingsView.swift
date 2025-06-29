@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var themeManager: ThemeManager
     @ObservedObject private var usageTracker = UsageTracker.shared
+    @State private var autoStartMetronome = UserDefaults.standard.bool(forKey: "AutoStartMetronomeWithPractice")
     
     var body: some View {
         NavigationView {
@@ -42,6 +43,28 @@ struct SettingsView: View {
                     }
                 } header: {
                     Text("Appearance")
+                }
+                
+                Section {
+                    Toggle(isOn: $autoStartMetronome) {
+                        HStack {
+                            Image(systemName: "metronome")
+                                .foregroundColor(.secondary)
+                                .frame(width: 20)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Auto-start metronome")
+                                Text("Start metronome when starting practice sessions")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .onChange(of: autoStartMetronome) { _, newValue in
+                        UserDefaults.standard.set(newValue, forKey: "AutoStartMetronomeWithPractice")
+                    }
+                } header: {
+                    Text("Practice Integration")
                 }
             }
             .navigationTitle("Settings")

@@ -49,20 +49,15 @@ enum NoteSubdivision: String, CaseIterable, Codable {
 
 struct MetronomeView: View {
     @ObservedObject private var usageTracker = UsageTracker.shared
+    @ObservedObject private var metronomeManager = MetronomeManager.shared
     @State private var bpm: Double = {
         let savedBPM = UserDefaults.standard.double(forKey: "MetronomeBPM")
         let finalBPM = savedBPM != 0 ? savedBPM : 120
         print("🎵 Loading BPM from UserDefaults: savedBPM=\(savedBPM), finalBPM=\(finalBPM)")
         return finalBPM
     }()
-    @State private var isPlaying = false
-    @State private var timer: Timer?
-    @State private var audioPlayer: AVAudioPlayer?
-    @State private var beatCount = 0
-    @State private var barCount = 1
     @State private var beatsPerBar = UserDefaults.standard.integer(forKey: "MetronomeBeatsPerBar") != 0 ? UserDefaults.standard.integer(forKey: "MetronomeBeatsPerBar") : 4
     @State private var subdivision: NoteSubdivision = NoteSubdivision(rawValue: UserDefaults.standard.string(forKey: "MetronomeSubdivision") ?? "") ?? .quarter
-    @State private var lastBeatTime: Date?
     @State private var isMuted = UserDefaults.standard.bool(forKey: "MetronomeIsMuted")
     @State private var beatStates: [Int: BeatState] = {
         let savedData = UserDefaults.standard.data(forKey: "MetronomeBeatStates")
@@ -90,11 +85,6 @@ struct MetronomeView: View {
     @State private var tempoChangerStartingBar = 1
     @State private var showingTempoChangerPicker = false
     
-    
-    static func calculateInterval(bpm: Double, subdivision: NoteSubdivision) -> TimeInterval {
-        let baseInterval = 60.0 / bpm
-        return baseInterval / subdivision.multiplier
-    }
     
     var beatIndicatorSize: CGFloat {
         // Responsive sizing based on number of beats
@@ -174,8 +164,7 @@ struct MetronomeView: View {
                     Slider(value: $bpm, in: 40...400, step: 1)
                         .padding(.horizontal)
                         .onChange(of: bpm) { _, _ in
-                            updateBPMWhilePlaying()
-                            UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+                            metronomeManager.bpm = bpm
                         }
                     
                     // BPMScrollWheel(bpm: $bpm)
@@ -218,7 +207,7 @@ struct MetronomeView: View {
                                 .background(Color.gray.opacity(0.2))
                                 .cornerRadius(8)
                             }
-                            .disabled(isPlaying)
+                            .disabled(metronomeManager.isPlaying)
                             .sheet(isPresented: $showingSubdivisionPicker) {
                                 SubdivisionPickerSheet(subdivision: $subdivision)
                             }
@@ -241,7 +230,7 @@ struct MetronomeView: View {
                                 .background(Color.gray.opacity(0.2))
                                 .cornerRadius(8)
                             }
-                            .disabled(isPlaying)
+                            .disabled(metronomeManager.isPlaying)
                             .sheet(isPresented: $showingBeatsPerBarPicker) {
                                 BeatsPerBarPickerSheet(beatsPerBar: $beatsPerBar, cleanupMutedBeats: cleanupBeatStates)
                             }
@@ -269,7 +258,7 @@ struct MetronomeView: View {
                             .background(isGapTrainerEnabled ? Color.blue.opacity(0.2) : Color.gray.opacity(0.2))
                             .cornerRadius(8)
                         }
-                        .disabled(isPlaying)
+                        .disabled(metronomeManager.isPlaying)
                         .sheet(isPresented: $showingGapTrainerPicker) {
                             GapTrainerPickerSheet(
                                 isGapTrainerEnabled: $isGapTrainerEnabled,
@@ -300,7 +289,7 @@ struct MetronomeView: View {
                             .background(isTempoChangerEnabled ? Color.green.opacity(0.2) : Color.gray.opacity(0.2))
                             .cornerRadius(8)
                         }
-                        .disabled(isPlaying)
+                        .disabled(metronomeManager.isPlaying)
                         .sheet(isPresented: $showingTempoChangerPicker) {
                             TempoChangerPickerSheet(
                                 isTempoChangerEnabled: $isTempoChangerEnabled,
@@ -312,8 +301,8 @@ struct MetronomeView: View {
                 }
                 
                 HStack(spacing: 20) {
-                    Button(isPlaying ? "Stop" : "Start") {
-                        toggleMetronome()
+                    Button(metronomeManager.isPlaying ? "Stop" : "Start") {
+                        metronomeManager.toggleMetronome()
                     }
                     .buttonStyle(.borderedProminent)
                     .font(.title2)
@@ -353,14 +342,14 @@ struct MetronomeView: View {
                                     )
                             }
                             .buttonStyle(PlainButtonStyle())
-                            .scaleEffect(isPlaying && beatCount == beat ? 1.2 : 1.0)
-                            .animation(.easeInOut(duration: 0.1), value: beatCount)
+                            .scaleEffect(metronomeManager.isPlaying && metronomeManager.beatCount == beat ? 1.2 : 1.0)
+                            .animation(.easeInOut(duration: 0.1), value: metronomeManager.beatCount)
                         }
                     }
                     
-                    if isPlaying {
+                    if metronomeManager.isPlaying {
                         VStack(spacing: 4) {
-                            Text("Bar \(barCount), Beat \(beatCount)")
+                            Text("Bar \(metronomeManager.barCount), Beat \(metronomeManager.beatCount)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             
@@ -372,7 +361,7 @@ struct MetronomeView: View {
                             }
                             
                             if isTempoChangerEnabled {
-                                let barsCompleted = barCount - tempoChangerStartingBar
+                                let barsCompleted = metronomeManager.barCount - tempoChangerStartingBar
                                 let nextIncreaseIn = tempoChangerBarInterval - (barsCompleted % tempoChangerBarInterval)
                                 Text("Tempo +\(tempoChangerBPMIncrement) in \(nextIncreaseIn) bars")
                                     .font(.caption2)
@@ -407,125 +396,12 @@ struct MetronomeView: View {
         .ignoresSafeArea(.keyboard, edges: .all)
     }
     
-    private func toggleMetronome() {
-        if isPlaying {
-            stopMetronome()
-        } else {
-            startMetronome()
-        }
-    }
     
-    private func startMetronome() {
-        print("🎵 Starting metronome at BPM: \(bpm)")
-        setupAudio()
-        isPlaying = true
-        usageTracker.startTracking()
-        
-        // Reset gap trainer state
-        if isGapTrainerEnabled {
-            gapTrainerCurrentCycle = 1
-            gapTrainerInNormalPhase = true
-        }
-        
-        // Reset tempo changer state
-        if isTempoChangerEnabled {
-            tempoChangerStartingBar = barCount
-        }
-        
-        playBeat()
-        startRegularTimer()
-    }
-    
-    private func stopMetronome() {
-        timer?.invalidate()
-        timer = nil
-        isPlaying = false
-        usageTracker.stopTracking()
-        beatCount = 0
-        barCount = 1
-        lastBeatTime = nil
-    }
-    
-    private func updateBPMWhilePlaying() {
-        guard isPlaying, let lastBeat = lastBeatTime else { return }
-        
-        let elapsed = Date().timeIntervalSince(lastBeat)
-        let newInterval = Self.calculateInterval(bpm: bpm, subdivision: subdivision)
-        let timeUntilNextBeat = max(0, newInterval - elapsed)
-        
-        timer?.invalidate()
-        
-        if timeUntilNextBeat > 0 {
-            timer = Timer.scheduledTimer(withTimeInterval: timeUntilNextBeat, repeats: false) { _ in
-                self.playBeat()
-                self.startRegularTimer()
-            }
-        } else {
-            playBeat()
-            startRegularTimer()
-        }
-    }
-    
-    private func playBeat() {
-        beatCount += 1
-        if beatCount > beatsPerBar {
-            beatCount = 1
-            barCount += 1
-            
-            // Tempo changer logic - check if we should increase tempo BEFORE processing the new bar
-            if isTempoChangerEnabled {
-                let barsCompleted = barCount - tempoChangerStartingBar
-                if barsCompleted > 0 && barsCompleted % tempoChangerBarInterval == 0 {
-                    let newBPM = min(bpm + Double(tempoChangerBPMIncrement), 400.0)
-                    if newBPM != bpm {
-                        print("🎵 Tempo Changer: Increasing BPM from \(bpm) to \(newBPM)")
-                        bpm = newBPM
-                        UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
-                        print("🎵 Tempo Changer: Saved BPM \(bpm) to UserDefaults")
-                        // Update timer with new tempo for next beats
-                        timer?.invalidate()
-                        startRegularTimer()
-                    }
-                }
-            }
-            
-            // Gap trainer logic - advance to next bar in cycle
-            if isGapTrainerEnabled {
-                gapTrainerCurrentCycle += 1
-                
-                if gapTrainerInNormalPhase {
-                    // Currently in normal phase
-                    if gapTrainerCurrentCycle > gapTrainerNormalBars {
-                        // Switch to muted phase
-                        gapTrainerInNormalPhase = false
-                        gapTrainerCurrentCycle = 1
-                    }
-                } else {
-                    // Currently in muted phase
-                    if gapTrainerCurrentCycle > gapTrainerMutedBars {
-                        // Switch back to normal phase
-                        gapTrainerInNormalPhase = true
-                        gapTrainerCurrentCycle = 1
-                    }
-                }
-            }
-        }
-        
-        playClick()
-        lastBeatTime = Date()
-    }
-    
-    private func startRegularTimer() {
-        let interval = Self.calculateInterval(bpm: bpm, subdivision: subdivision)
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-            self.playBeat()
-        }
-    }
     
     private func beatIndicatorColor(for beat: Int) -> Color {
         // Gap trainer muted phase overrides everything
-        if isGapTrainerEnabled && !gapTrainerInNormalPhase && isPlaying {
-            if beatCount == beat {
+        if isGapTrainerEnabled && !gapTrainerInNormalPhase && metronomeManager.isPlaying {
+            if metronomeManager.beatCount == beat {
                 return Color.orange.opacity(0.8) // Muted phase active beat
             } else {
                 return Color.gray.opacity(0.4) // Muted phase inactive beats
@@ -538,13 +414,13 @@ struct MetronomeView: View {
         case .muted:
             return Color.gray.opacity(0.6)
         case .accented:
-            if isPlaying && beatCount == beat {
+            if metronomeManager.isPlaying && metronomeManager.beatCount == beat {
                 return Color.red.opacity(0.9)
             } else {
                 return Color.red.opacity(0.4)
             }
         case .normal:
-            if isPlaying && beatCount == beat {
+            if metronomeManager.isPlaying && metronomeManager.beatCount == beat {
                 return Color.blue.opacity(0.9)
             } else {
                 return Color.gray.opacity(0.3)
@@ -592,35 +468,6 @@ struct MetronomeView: View {
         }
     }
     
-    private func setupAudio() {
-        do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
-            try AVAudioSession.sharedInstance().setActive(true)
-        } catch {
-            print("Failed to setup audio session: \(error)")
-        }
-    }
-    
-    private func playClick() {
-        // Check gap trainer muting first (overrides individual beat muting)
-        if isGapTrainerEnabled && !gapTrainerInNormalPhase {
-            return // Muted phase - no sound
-        }
-        
-        // Regular muting checks
-        guard !isMuted else { return }
-        
-        let beatState = beatStates[beatCount] ?? .normal
-        
-        switch beatState {
-        case .muted:
-            return // No sound for muted beats
-        case .accented:
-            AudioServicesPlaySystemSound(1103) // 1103 is louder click sound
-        case .normal:
-            AudioServicesPlaySystemSound(1104) // 1104 is click sound
-        }
-    }
     
     private func toggleBeatState(beat: Int) {
         let currentState = beatStates[beat] ?? .normal
@@ -644,8 +491,7 @@ struct MetronomeView: View {
         if bpm < 400 {
             bpm += 1
             triggerHapticFeedback()
-            updateBPMWhilePlaying()
-            UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+            metronomeManager.bpm = bpm
         }
     }
     
@@ -653,8 +499,7 @@ struct MetronomeView: View {
         if bpm > 40 {
             bpm -= 1
             triggerHapticFeedback()
-            updateBPMWhilePlaying()
-            UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+            metronomeManager.bpm = bpm
         }
     }
     
@@ -678,8 +523,7 @@ struct MetronomeView: View {
             let clampedBPM = max(40, min(400, calculatedBPM))
             bpm = clampedBPM
             triggerHapticFeedback()
-            updateBPMWhilePlaying()
-            UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+            metronomeManager.bpm = bpm
         }
         
         // Keep only the last 6 taps for better accuracy
@@ -708,8 +552,7 @@ struct MetronomeView: View {
         if let newBPM = Double(bpmInputText), newBPM >= 40, newBPM <= 400 {
             bpm = newBPM
             triggerHapticFeedback()
-            updateBPMWhilePlaying()
-            UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+            metronomeManager.bpm = bpm
         } else {
             // Invalid input, revert to current BPM
             bpmInputText = String(Int(bpm))

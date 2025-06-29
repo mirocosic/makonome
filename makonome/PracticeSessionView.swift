@@ -149,7 +149,9 @@ struct PracticeSessionView: View {
                     sessionName: $sessionName,
                     targetDuration: $targetDuration,
                     hasTargetDuration: $hasTargetDuration,
-                    onStart: startNewSession
+                    onStart: { shouldStartMetronome in
+                        startNewSession(shouldStartMetronome: shouldStartMetronome)
+                    }
                 )
             }
             .onAppear {
@@ -161,9 +163,9 @@ struct PracticeSessionView: View {
         }
     }
     
-    private func startNewSession() {
+    private func startNewSession(shouldStartMetronome: Bool) {
         let target = hasTargetDuration ? targetDuration : nil
-        sessionManager.startSession(name: sessionName, targetDuration: target)
+        sessionManager.startSession(name: sessionName, targetDuration: target, shouldStartMetronome: shouldStartMetronome)
         showingSessionSetup = false
     }
     
@@ -190,9 +192,10 @@ struct SessionSetupView: View {
     @Binding var sessionName: String
     @Binding var targetDuration: TimeInterval
     @Binding var hasTargetDuration: Bool
-    let onStart: () -> Void
+    let onStart: (Bool) -> Void
     
     @Environment(\.dismiss) private var dismiss
+    @State private var shouldStartMetronome = UserDefaults.standard.bool(forKey: "AutoStartMetronomeWithPractice")
     
     var body: some View {
         NavigationView {
@@ -219,6 +222,17 @@ struct SessionSetupView: View {
                             }
                     }
                 }
+                
+                Section("Metronome") {
+                    Toggle(isOn: $shouldStartMetronome) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Start metronome")
+                            Text("Begin metronome with this practice session")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
             }
             .navigationTitle("New Session")
             .navigationBarTitleDisplayMode(.inline)
@@ -231,7 +245,7 @@ struct SessionSetupView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Start") {
-                        onStart()
+                        onStart(shouldStartMetronome)
                     }
                     .disabled(sessionName.isEmpty)
                 }
