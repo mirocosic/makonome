@@ -155,6 +155,10 @@ struct PracticeSessionView: View {
                 )
             }
             .onAppear {
+                // Immediately update the UI to show current time
+                if sessionManager.currentSession != nil {
+                    sessionManager.objectWillChange.send()
+                }
                 startTimer()
             }
             .onDisappear {
@@ -174,6 +178,11 @@ struct PracticeSessionView: View {
     }
     
     private func startTimer() {
+        // Immediately trigger first update
+        if sessionManager.currentSession != nil {
+            sessionManager.objectWillChange.send()
+        }
+        
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             // This will trigger UI updates for the duration display
             if sessionManager.currentSession != nil {
