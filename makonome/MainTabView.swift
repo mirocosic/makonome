@@ -19,12 +19,19 @@ struct MainTabView: View {
                 }
                 .tag(0)
             
+            PracticeSessionView()
+                .tabItem {
+                    Image(systemName: "timer")
+                    Text("Practice")
+                }
+                .tag(1)
+            
             SettingsView()
                 .tabItem {
                     Image(systemName: "gear")
                     Text("Settings")
                 }
-                .tag(1)
+                .tag(2)
         }
     }
 }
