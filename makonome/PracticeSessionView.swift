@@ -149,8 +149,8 @@ struct PracticeSessionView: View {
                     sessionName: $sessionName,
                     targetDuration: $targetDuration,
                     hasTargetDuration: $hasTargetDuration,
-                    onStart: { shouldStartMetronome in
-                        startNewSession(shouldStartMetronome: shouldStartMetronome)
+                    onStart: { shouldStartMetronome, selectedPresetId in
+                        startNewSession(shouldStartMetronome: shouldStartMetronome, selectedPresetId: selectedPresetId)
                     }
                 )
             }
@@ -167,9 +167,9 @@ struct PracticeSessionView: View {
         }
     }
     
-    private func startNewSession(shouldStartMetronome: Bool) {
+    private func startNewSession(shouldStartMetronome: Bool, selectedPresetId: UUID?) {
         let target = hasTargetDuration ? targetDuration : nil
-        sessionManager.startSession(name: sessionName, targetDuration: target, shouldStartMetronome: shouldStartMetronome)
+        sessionManager.startSession(name: sessionName, targetDuration: target, shouldStartMetronome: shouldStartMetronome, selectedPresetId: selectedPresetId)
         showingSessionSetup = false
     }
     
@@ -201,10 +201,12 @@ struct SessionSetupView: View {
     @Binding var sessionName: String
     @Binding var targetDuration: TimeInterval
     @Binding var hasTargetDuration: Bool
-    let onStart: (Bool) -> Void
+    let onStart: (Bool, UUID?) -> Void
     
     @Environment(\.dismiss) private var dismiss
     @State private var shouldStartMetronome = UserDefaults.standard.bool(forKey: "AutoStartMetronomeWithPractice")
+    @State private var availablePresets: [MetronomePreset] = []
+    @State private var selectedPresetId: UUID?
     
     var body: some View {
         NavigationView {
@@ -241,10 +243,42 @@ struct SessionSetupView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
+                    
+                    if shouldStartMetronome && !availablePresets.isEmpty {
+                        Picker("Preset", selection: $selectedPresetId) {
+                            Text("None").tag(UUID?.none)
+                            ForEach(availablePresets) { preset in
+                                Text("\(preset.name) - \(Int(preset.bpm)) BPM").tag(UUID?.some(preset.id))
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        
+                        if let selectedPresetId = selectedPresetId,
+                           let selectedPreset = availablePresets.first(where: { $0.id == selectedPresetId }) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Preset Settings:")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                HStack {
+                                    Text("BPM: \(Int(selectedPreset.bpm))")
+                                    Spacer()
+                                    Text("\(selectedPreset.beatsPerBar)/4")
+                                    Spacer()
+                                    Text(selectedPreset.subdivision.symbol)
+                                }
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            }
+                            .padding(.top, 4)
+                        }
+                    }
                 }
             }
             .navigationTitle("New Session")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                loadPresets()
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
@@ -254,7 +288,7 @@ struct SessionSetupView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Start") {
-                        onStart(shouldStartMetronome)
+                        onStart(shouldStartMetronome, selectedPresetId)
                     }
                     .disabled(sessionName.isEmpty)
                 }
@@ -271,6 +305,13 @@ struct SessionSetupView: View {
             return "\(hours)h \(remainingMinutes)m"
         } else {
             return "\(minutes)m"
+        }
+    }
+    
+    private func loadPresets() {
+        if let data = UserDefaults.standard.data(forKey: "MetronomePresets"),
+           let presets = try? JSONDecoder().decode([MetronomePreset].self, from: data) {
+            availablePresets = presets
         }
     }
 }

@@ -15,6 +15,7 @@ struct PracticeSession: Identifiable, Codable {
     var notes: String
     var targetDuration: TimeInterval? // Optional practice goal in seconds
     var shouldStartMetronome: Bool
+    var selectedPresetId: UUID? // Optional metronome preset to use with this session
     
     var duration: TimeInterval {
         if let endTime = endTime {
@@ -33,12 +34,13 @@ struct PracticeSession: Identifiable, Codable {
         return duration >= targetDuration
     }
     
-    init(sessionName: String = "Practice Session", targetDuration: TimeInterval? = nil, notes: String = "", shouldStartMetronome: Bool = UserDefaults.standard.bool(forKey: "AutoStartMetronomeWithPractice")) {
+    init(sessionName: String = "Practice Session", targetDuration: TimeInterval? = nil, notes: String = "", shouldStartMetronome: Bool = UserDefaults.standard.bool(forKey: "AutoStartMetronomeWithPractice"), selectedPresetId: UUID? = nil) {
         self.startTime = Date()
         self.sessionName = sessionName
         self.targetDuration = targetDuration
         self.notes = notes
         self.shouldStartMetronome = shouldStartMetronome
+        self.selectedPresetId = selectedPresetId
     }
     
     mutating func complete() {

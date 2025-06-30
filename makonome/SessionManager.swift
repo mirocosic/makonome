@@ -24,15 +24,20 @@ class SessionManager: ObservableObject {
     
     // MARK: - Session Management
     
-    func startSession(name: String = "Practice Session", targetDuration: TimeInterval? = nil, notes: String = "", shouldStartMetronome: Bool = UserDefaults.standard.bool(forKey: "AutoStartMetronomeWithPractice")) {
+    func startSession(name: String = "Practice Session", targetDuration: TimeInterval? = nil, notes: String = "", shouldStartMetronome: Bool = UserDefaults.standard.bool(forKey: "AutoStartMetronomeWithPractice"), selectedPresetId: UUID? = nil) {
         // Complete any existing session first
         if let current = currentSession {
             completeCurrentSession()
         }
         
-        let newSession = PracticeSession(sessionName: name, targetDuration: targetDuration, notes: notes, shouldStartMetronome: shouldStartMetronome)
+        let newSession = PracticeSession(sessionName: name, targetDuration: targetDuration, notes: notes, shouldStartMetronome: shouldStartMetronome, selectedPresetId: selectedPresetId)
         currentSession = newSession
         saveCurrentSession()
+        
+        // Apply preset settings if specified
+        if let presetId = selectedPresetId {
+            applyPreset(presetId: presetId)
+        }
         
         // Start metronome if requested
         if shouldStartMetronome {
@@ -75,6 +80,35 @@ class SessionManager: ObservableObject {
     func updateCurrentSessionTarget(_ targetDuration: TimeInterval?) {
         currentSession?.targetDuration = targetDuration
         saveCurrentSession()
+    }
+    
+    // MARK: - Preset Management
+    
+    private func applyPreset(presetId: UUID) {
+        guard let preset = loadPreset(presetId: presetId) else {
+            print("⚠️ Could not find preset with ID: \(presetId)")
+            return
+        }
+        
+        // Apply preset settings to UserDefaults (same as PresetView does)
+        UserDefaults.standard.set(preset.bpm, forKey: "MetronomeBPM")
+        UserDefaults.standard.set(preset.beatsPerBar, forKey: "MetronomeBeatsPerBar")
+        UserDefaults.standard.set(preset.subdivision.rawValue, forKey: "MetronomeSubdivision")
+        
+        // Encode and save beat states
+        if let beatStatesData = try? JSONEncoder().encode(preset.beatStates) {
+            UserDefaults.standard.set(beatStatesData, forKey: "MetronomeBeatStates")
+        }
+        
+        print("📝 Applied preset '\(preset.name)' to metronome: \(Int(preset.bpm)) BPM, \(preset.beatsPerBar)/4")
+    }
+    
+    private func loadPreset(presetId: UUID) -> MetronomePreset? {
+        guard let data = UserDefaults.standard.data(forKey: "MetronomePresets"),
+              let presets = try? JSONDecoder().decode([MetronomePreset].self, from: data) else {
+            return nil
+        }
+        return presets.first { $0.id == presetId }
     }
     
     // MARK: - History Management
