@@ -121,7 +121,13 @@ class MetronomeManager: ObservableObject {
     private var tempoChangerStartingBar = 1
     private let usageTracker = UsageTracker.shared
     
-    private init() {}
+    // Audio players for metronome clicks
+    private var normalClickPlayer: AVAudioPlayer?
+    private var accentClickPlayer: AVAudioPlayer?
+    
+    private init() {
+        setupClickSounds()
+    }
     
     // MARK: - Public Methods
     
@@ -184,8 +190,10 @@ class MetronomeManager: ObservableObject {
     
     private func setupAudio() {
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            // Use .playback category with .mixWithOthers option to play even when muted
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
+            print("🔊 Audio session configured to bypass mute switch")
         } catch {
             print("Failed to setup audio session: \(error)")
         }
@@ -261,9 +269,93 @@ class MetronomeManager: ObservableObject {
         case .muted:
             return
         case .accented:
-            AudioServicesPlaySystemSound(1103)
+            playAccentClick()
         case .normal:
-            AudioServicesPlaySystemSound(1104)
+            playNormalClick()
         }
+    }
+    
+    // MARK: - Audio Generation
+    
+    private func setupClickSounds() {
+        do {
+            // Generate normal click sound (800Hz sine wave)
+            normalClickPlayer = try createTonePlayer(frequency: 800, duration: 0.1)
+            normalClickPlayer?.prepareToPlay()
+            
+            // Generate accent click sound (1200Hz sine wave)
+            accentClickPlayer = try createTonePlayer(frequency: 1200, duration: 0.1)
+            accentClickPlayer?.prepareToPlay()
+            
+            print("🔊 Click sounds generated successfully")
+        } catch {
+            print("Failed to create click sounds: \(error)")
+        }
+    }
+    
+    private func createTonePlayer(frequency: Double, duration: Double) throws -> AVAudioPlayer {
+        let sampleRate: Double = 44100
+        let frameCount = Int(sampleRate * duration)
+        
+        // Create audio buffer
+        var audioData = Data()
+        
+        for frame in 0..<frameCount {
+            let sample = sin(2.0 * Double.pi * frequency * Double(frame) / sampleRate)
+            let scaledSample = Int16(sample * 32767.0)
+            
+            var littleEndianSample = scaledSample.littleEndian
+            audioData.append(Data(bytes: &littleEndianSample, count: MemoryLayout<Int16>.size))
+        }
+        
+        // Create WAV header
+        let wavHeader = createWAVHeader(dataSize: audioData.count, sampleRate: Int(sampleRate))
+        let wavData = wavHeader + audioData
+        
+        return try AVAudioPlayer(data: wavData)
+    }
+    
+    private func createWAVHeader(dataSize: Int, sampleRate: Int) -> Data {
+        var header = Data()
+        
+        // RIFF header
+        header.append("RIFF".data(using: .ascii)!)
+        header.append(UInt32(36 + dataSize).littleEndian.data)
+        header.append("WAVE".data(using: .ascii)!)
+        
+        // Format chunk
+        header.append("fmt ".data(using: .ascii)!)
+        header.append(UInt32(16).littleEndian.data) // PCM chunk size
+        header.append(UInt16(1).littleEndian.data)  // PCM format
+        header.append(UInt16(1).littleEndian.data)  // Mono
+        header.append(UInt32(sampleRate).littleEndian.data)
+        header.append(UInt32(sampleRate * 2).littleEndian.data) // Byte rate
+        header.append(UInt16(2).littleEndian.data)  // Block align
+        header.append(UInt16(16).littleEndian.data) // Bits per sample
+        
+        // Data chunk
+        header.append("data".data(using: .ascii)!)
+        header.append(UInt32(dataSize).littleEndian.data)
+        
+        return header
+    }
+    
+    private func playNormalClick() {
+        normalClickPlayer?.stop()
+        normalClickPlayer?.currentTime = 0
+        normalClickPlayer?.play()
+    }
+    
+    private func playAccentClick() {
+        accentClickPlayer?.stop()
+        accentClickPlayer?.currentTime = 0
+        accentClickPlayer?.play()
+    }
+}
+
+// MARK: - Extensions for WAV generation
+extension FixedWidthInteger {
+    var data: Data {
+        return withUnsafeBytes(of: self) { Data($0) }
     }
 }
