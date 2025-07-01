@@ -8,12 +8,35 @@
 import Foundation
 import AVFoundation
 
+enum MetronomeSound: String, CaseIterable, Codable {
+    case click = "Click"
+    case clave = "Clave"
+    
+    var normalSoundFile: String {
+        switch self {
+        case .click: return "click"
+        case .clave: return "clave"
+        }
+    }
+    
+    var accentSoundFile: String {
+        switch self {
+        case .click: return "click1"
+        case .clave: return "clave1"
+        }
+    }
+}
+
 class MetronomeManager: ObservableObject {
     static let shared = MetronomeManager()
     
     @Published var isPlaying = false
     @Published var beatCount = 0
     @Published var barCount = 1
+    @Published var selectedSound: MetronomeSound = {
+        let savedString = UserDefaults.standard.string(forKey: "MetronomeSelectedSound") ?? ""
+        return MetronomeSound(rawValue: savedString) ?? .click
+    }()
     
     // Metronome settings - loaded from UserDefaults
     var bpm: Double {
@@ -113,6 +136,7 @@ class MetronomeManager: ObservableObject {
         set { UserDefaults.standard.set(newValue, forKey: "TempoChangerBarInterval") }
     }
     
+    
     // Private implementation details
     private var timer: Timer?
     private var lastBeatTime: Date?
@@ -127,6 +151,12 @@ class MetronomeManager: ObservableObject {
     
     private init() {
         setupClickSounds()
+    }
+    
+    func updateSelectedSound(_ newSound: MetronomeSound) {
+        selectedSound = newSound
+        UserDefaults.standard.set(newSound.rawValue, forKey: "MetronomeSelectedSound")
+        setupClickSounds() // Reload sounds when selection changes
     }
     
     // MARK: - Public Methods
@@ -279,66 +309,30 @@ class MetronomeManager: ObservableObject {
     
     private func setupClickSounds() {
         do {
-            // Generate normal click sound (800Hz sine wave)
-            normalClickPlayer = try createTonePlayer(frequency: 800, duration: 0.1)
+            let sound = selectedSound
+            
+            // Load normal sound from MP3 file
+            guard let normalSoundURL = Bundle.main.url(forResource: sound.normalSoundFile, withExtension: "mp3") else {
+                print("Failed to find \(sound.normalSoundFile).mp3 file")
+                return
+            }
+            normalClickPlayer = try AVAudioPlayer(contentsOf: normalSoundURL)
             normalClickPlayer?.prepareToPlay()
             
-            // Generate accent click sound (1200Hz sine wave)
-            accentClickPlayer = try createTonePlayer(frequency: 1200, duration: 0.1)
+            // Load accent sound from MP3 file
+            guard let accentSoundURL = Bundle.main.url(forResource: sound.accentSoundFile, withExtension: "mp3") else {
+                print("Failed to find \(sound.accentSoundFile).mp3 file")
+                return
+            }
+            accentClickPlayer = try AVAudioPlayer(contentsOf: accentSoundURL)
             accentClickPlayer?.prepareToPlay()
             
-            print("🔊 Click sounds generated successfully")
+            print("🔊 \(sound.rawValue) sounds loaded successfully from MP3 files")
         } catch {
-            print("Failed to create click sounds: \(error)")
+            print("Failed to load metronome sounds: \(error)")
         }
     }
     
-    private func createTonePlayer(frequency: Double, duration: Double) throws -> AVAudioPlayer {
-        let sampleRate: Double = 44100
-        let frameCount = Int(sampleRate * duration)
-        
-        // Create audio buffer
-        var audioData = Data()
-        
-        for frame in 0..<frameCount {
-            let sample = sin(2.0 * Double.pi * frequency * Double(frame) / sampleRate)
-            let scaledSample = Int16(sample * 32767.0)
-            
-            var littleEndianSample = scaledSample.littleEndian
-            audioData.append(Data(bytes: &littleEndianSample, count: MemoryLayout<Int16>.size))
-        }
-        
-        // Create WAV header
-        let wavHeader = createWAVHeader(dataSize: audioData.count, sampleRate: Int(sampleRate))
-        let wavData = wavHeader + audioData
-        
-        return try AVAudioPlayer(data: wavData)
-    }
-    
-    private func createWAVHeader(dataSize: Int, sampleRate: Int) -> Data {
-        var header = Data()
-        
-        // RIFF header
-        header.append("RIFF".data(using: .ascii)!)
-        header.append(UInt32(36 + dataSize).littleEndian.data)
-        header.append("WAVE".data(using: .ascii)!)
-        
-        // Format chunk
-        header.append("fmt ".data(using: .ascii)!)
-        header.append(UInt32(16).littleEndian.data) // PCM chunk size
-        header.append(UInt16(1).littleEndian.data)  // PCM format
-        header.append(UInt16(1).littleEndian.data)  // Mono
-        header.append(UInt32(sampleRate).littleEndian.data)
-        header.append(UInt32(sampleRate * 2).littleEndian.data) // Byte rate
-        header.append(UInt16(2).littleEndian.data)  // Block align
-        header.append(UInt16(16).littleEndian.data) // Bits per sample
-        
-        // Data chunk
-        header.append("data".data(using: .ascii)!)
-        header.append(UInt32(dataSize).littleEndian.data)
-        
-        return header
-    }
     
     private func playNormalClick() {
         normalClickPlayer?.stop()
@@ -353,9 +347,3 @@ class MetronomeManager: ObservableObject {
     }
 }
 
-// MARK: - Extensions for WAV generation
-extension FixedWidthInteger {
-    var data: Data {
-        return withUnsafeBytes(of: self) { Data($0) }
-    }
-}

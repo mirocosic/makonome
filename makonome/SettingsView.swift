@@ -4,6 +4,7 @@ struct SettingsView: View {
     @EnvironmentObject var themeManager: ThemeManager
     @ObservedObject private var usageTracker = UsageTracker.shared
     @ObservedObject private var notificationManager = NotificationManager.shared
+    @ObservedObject private var metronomeManager = MetronomeManager.shared
     @State private var autoStartMetronome = UserDefaults.standard.bool(forKey: "AutoStartMetronomeWithPractice")
     @State private var showingPermissionAlert = false
     @State private var devModeEnabled = UserDefaults.standard.bool(forKey: "DeveloperModeEnabled")
@@ -47,6 +48,26 @@ struct SettingsView: View {
                     }
                 } header: {
                     Text("Appearance")
+                }
+                
+                Section {
+                    HStack {
+                        Image(systemName: "speaker.wave.2.fill")
+                            .foregroundColor(.secondary)
+                            .frame(width: 20)
+                        
+                        Picker("Metronome Sound", selection: $metronomeManager.selectedSound) {
+                            ForEach(MetronomeSound.allCases, id: \.rawValue) { sound in
+                                Text(sound.rawValue).tag(sound)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: metronomeManager.selectedSound) { _, newValue in
+                            metronomeManager.updateSelectedSound(newValue)
+                        }
+                    }
+                } header: {
+                    Text("Metronome Sound")
                 }
                 
                 Section {
