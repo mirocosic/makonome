@@ -9,7 +9,6 @@ import SwiftUI
 
 struct PracticeSessionView: View {
     @StateObject private var sessionManager = SessionManager.shared
-    @State private var timer: Timer?
     @State private var sessionName = "Practice Session"
     @State private var targetDuration: TimeInterval = 1800 // 30 minutes default
     @State private var hasTargetDuration = false
@@ -159,10 +158,6 @@ struct PracticeSessionView: View {
                 if sessionManager.currentSession != nil {
                     sessionManager.objectWillChange.send()
                 }
-                startTimer()
-            }
-            .onDisappear {
-                stopTimer()
             }
         }
     }
@@ -175,25 +170,6 @@ struct PracticeSessionView: View {
     
     private func completeSession() {
         sessionManager.completeCurrentSession()
-    }
-    
-    private func startTimer() {
-        // Immediately trigger first update
-        if sessionManager.currentSession != nil {
-            sessionManager.objectWillChange.send()
-        }
-        
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            // This will trigger UI updates for the duration display
-            if sessionManager.currentSession != nil {
-                sessionManager.objectWillChange.send()
-            }
-        }
-    }
-    
-    private func stopTimer() {
-        timer?.invalidate()
-        timer = nil
     }
 }
 

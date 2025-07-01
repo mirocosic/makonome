@@ -9,6 +9,15 @@ import SwiftUI
 
 struct MainTabView: View {
     @State private var selectedTab = 0
+    @ObservedObject private var sessionManager = SessionManager.shared
+    
+    private var practiceTabText: String {
+        if let currentSession = sessionManager.currentSession {
+            return sessionManager.formatTime(currentSession.duration)
+        } else {
+            return "Practice"
+        }
+    }
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -22,7 +31,7 @@ struct MainTabView: View {
             PracticeSessionView()
                 .tabItem {
                     Image(systemName: "timer")
-                    Text("Practice")
+                    Text(practiceTabText)
                 }
                 .tag(1)
             

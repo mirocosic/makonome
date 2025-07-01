@@ -16,10 +16,16 @@ class SessionManager: ObservableObject {
     private let sessionsKey = "PracticeSessions"
     private let currentSessionKey = "CurrentPracticeSession"
     private let metronomeManager = MetronomeManager.shared
+    private var sessionTimer: Timer?
     
     private init() {
         loadSessions()
         loadCurrentSession()
+        
+        // Start timer if there's an active session
+        if currentSession != nil {
+            startSessionTimer()
+        }
     }
     
     // MARK: - Session Management
@@ -45,6 +51,9 @@ class SessionManager: ObservableObject {
             print("📝 Started metronome with practice session")
         }
         
+        // Start the session timer for UI updates
+        startSessionTimer()
+        
         print("📝 Started new practice session: \(name)")
     }
     
@@ -60,6 +69,9 @@ class SessionManager: ObservableObject {
         current.complete()
         sessions.append(current)
         currentSession = nil
+        
+        // Stop the session timer
+        stopSessionTimer()
         
         saveSessions()
         saveCurrentSession()
@@ -186,6 +198,25 @@ class SessionManager: ObservableObject {
         } catch {
             print("Failed to load current session: \(error)")
         }
+    }
+    
+    // MARK: - Timer Management
+    
+    private func startSessionTimer() {
+        // Stop any existing timer first
+        stopSessionTimer()
+        
+        sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            // Trigger UI updates when session is active
+            if self.currentSession != nil {
+                self.objectWillChange.send()
+            }
+        }
+    }
+    
+    private func stopSessionTimer() {
+        sessionTimer?.invalidate()
+        sessionTimer = nil
     }
     
     // MARK: - Utility
