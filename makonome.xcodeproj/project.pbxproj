@@ -29,9 +29,22 @@
 		4E4B20AA2E09A2230022F1A5 /* makonomeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = makonomeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4E05E9692E141B4D000BD42E /* Exceptions for "makonome" folder in "makonome" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 4E4B208F2E09A2220022F1A5 /* makonome */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		4E4B20922E09A2220022F1A5 /* makonome */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4E05E9692E141B4D000BD42E /* Exceptions for "makonome" folder in "makonome" target */,
+			);
 			path = makonome;
 			sourceTree = "<group>";
 		};
@@ -422,6 +435,7 @@
 				DEVELOPMENT_TEAM = QDRTVHPM2W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = makonome/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -451,6 +465,7 @@
 				DEVELOPMENT_TEAM = QDRTVHPM2W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = makonome/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

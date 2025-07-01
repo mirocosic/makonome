@@ -7,6 +7,7 @@
 
 import Foundation
 import AVFoundation
+import UIKit
 
 enum MetronomeSound: String, CaseIterable, Codable {
     case click = "Click"
@@ -138,7 +139,7 @@ class MetronomeManager: ObservableObject {
     
     
     // Private implementation details
-    private var timer: Timer?
+    private var timer: DispatchSourceTimer?
     private var lastBeatTime: Date?
     private var gapTrainerCurrentCycle = 1
     private var gapTrainerInNormalPhase = true
@@ -148,9 +149,12 @@ class MetronomeManager: ObservableObject {
     // Audio players for metronome clicks
     private var normalClickPlayer: AVAudioPlayer?
     private var accentClickPlayer: AVAudioPlayer?
+    private var wasPlayingBeforeInterruption = false
+    private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
     
     private init() {
         setupClickSounds()
+        setupInterruptionHandling()
     }
     
     func updateSelectedSound(_ newSound: MetronomeSound) {
@@ -166,6 +170,7 @@ class MetronomeManager: ObservableObject {
         
         print("🎵 Starting metronome at BPM: \(bpm)")
         setupAudio()
+        startBackgroundTask()
         isPlaying = true
         usageTracker.startTracking()
         
@@ -187,8 +192,9 @@ class MetronomeManager: ObservableObject {
     func stopMetronome() {
         guard isPlaying else { return }
         
-        timer?.invalidate()
+        timer?.cancel()
         timer = nil
+        endBackgroundTask()
         isPlaying = false
         usageTracker.stopTracking()
         beatCount = 0
@@ -212,7 +218,7 @@ class MetronomeManager: ObservableObject {
         guard isPlaying else { return }
         
         // Restart the timer with the new BPM
-        timer?.invalidate()
+        timer?.cancel()
         startRegularTimer()
         
         print("🎵 Updated tempo to \(bpm) BPM while playing")
@@ -220,10 +226,14 @@ class MetronomeManager: ObservableObject {
     
     private func setupAudio() {
         do {
-            // Use .playback category with .mixWithOthers option to play even when muted
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            // Use .playback category for background audio with comprehensive options
+            try AVAudioSession.sharedInstance().setCategory(
+                .playback, 
+                mode: .default, 
+                options: [.duckOthers, .allowBluetooth, .defaultToSpeaker]
+            )
             try AVAudioSession.sharedInstance().setActive(true)
-            print("🔊 Audio session configured to bypass mute switch")
+            print("🔊 Audio session configured for reliable background playback")
         } catch {
             print("Failed to setup audio session: \(error)")
         }
@@ -245,7 +255,7 @@ class MetronomeManager: ObservableObject {
                         bpm = newBPM
                         print("🎵 Tempo Changer: Saved BPM \(bpm) to UserDefaults")
                         // Update timer with new tempo for next beats
-                        timer?.invalidate()
+                        timer?.cancel()
                         startRegularTimer()
                     }
                 }
@@ -275,9 +285,17 @@ class MetronomeManager: ObservableObject {
     
     private func startRegularTimer() {
         let interval = calculateInterval(bpm: bpm, subdivision: subdivision)
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-            self.playBeat()
+        
+        // Stop any existing timer
+        timer?.cancel()
+        
+        // Create a new dispatch timer
+        timer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
+        timer?.schedule(deadline: .now() + interval, repeating: interval)
+        timer?.setEventHandler { [weak self] in
+            self?.playBeat()
         }
+        timer?.resume()
     }
     
     private func calculateInterval(bpm: Double, subdivision: NoteSubdivision) -> TimeInterval {
@@ -344,6 +362,89 @@ class MetronomeManager: ObservableObject {
         accentClickPlayer?.stop()
         accentClickPlayer?.currentTime = 0
         accentClickPlayer?.play()
+    }
+    
+    // MARK: - Audio Interruption Handling
+    
+    private func setupInterruptionHandling() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: nil
+        )
+    }
+    
+    @objc private func handleInterruption(notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+            return
+        }
+        
+        switch type {
+        case .began:
+            // Audio interruption began (e.g., phone call)
+            if isPlaying {
+                wasPlayingBeforeInterruption = true
+                stopMetronome()
+                print("🔊 Audio interrupted - metronome stopped")
+            }
+            
+        case .ended:
+            // Audio interruption ended
+            if wasPlayingBeforeInterruption {
+                if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
+                    let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+                    if options.contains(.shouldResume) {
+                        // Reactivate audio session and resume playback
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                            self?.resumeAfterInterruption()
+                        }
+                    }
+                }
+                wasPlayingBeforeInterruption = false
+            }
+            
+        @unknown default:
+            break
+        }
+    }
+    
+    private func resumeAfterInterruption() {
+        do {
+            // Reactivate audio session
+            try AVAudioSession.sharedInstance().setActive(true)
+            
+            // Resume metronome
+            startMetronome()
+            print("🔊 Audio interruption ended - metronome resumed")
+        } catch {
+            print("🔊 Failed to resume after interruption: \(error)")
+            // Try again with a delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                self?.resumeAfterInterruption()
+            }
+        }
+    }
+    
+    // MARK: - Background Task Management
+    
+    private func startBackgroundTask() {
+        endBackgroundTask() // End any existing task first
+        
+        backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "MetronomePlayback") { [weak self] in
+            // Called when background time is about to expire
+            print("🔊 Background task expired - stopping metronome")
+            self?.stopMetronome()
+        }
+    }
+    
+    private func endBackgroundTask() {
+        if backgroundTaskID != .invalid {
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            backgroundTaskID = .invalid
+        }
     }
 }
 
