@@ -352,7 +352,7 @@ class MetronomeManager: ObservableObject {
         }
         
         // Handle normal and accented beats
-        if !isMuted {
+        if !isMuted && volume > 0 {
             switch beatState {
             case .accented:
                 playAccentClick()

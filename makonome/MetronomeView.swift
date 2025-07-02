@@ -58,7 +58,6 @@ struct MetronomeView: View {
     }()
     @State private var beatsPerBar = UserDefaults.standard.integer(forKey: "MetronomeBeatsPerBar") != 0 ? UserDefaults.standard.integer(forKey: "MetronomeBeatsPerBar") : 4
     @State private var subdivision: NoteSubdivision = NoteSubdivision(rawValue: UserDefaults.standard.string(forKey: "MetronomeSubdivision") ?? "") ?? .quarter
-    @State private var isMuted = UserDefaults.standard.bool(forKey: "MetronomeIsMuted")
     @State private var beatStates: [Int: BeatState] = {
         let savedData = UserDefaults.standard.data(forKey: "MetronomeBeatStates")
         if let data = savedData, let decoded = try? JSONDecoder().decode([Int: BeatState].self, from: data) {
@@ -310,14 +309,14 @@ struct MetronomeView: View {
                     .font(.title2)
                     
                     Button(action: {
-                        // Empty action - we'll handle tap and long press separately
+                        showVolumeSheet()
                     }) {
                         VStack(spacing: 2) {
-                            Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                            Image(systemName: displayVolume == 0 ? "speaker.slash.fill" : "speaker.wave.2.fill")
                                 .font(.title2)
-                                .foregroundColor(isMuted ? .red : .blue)
+                                .foregroundColor(displayVolume == 0 ? .red : .blue)
                             
-                            if !isMuted {
+                            if displayVolume > 0 {
                                 Text("\(Int(displayVolume * 100))%")
                                     .font(.caption2)
                                     .fontWeight(.medium)
@@ -326,19 +325,6 @@ struct MetronomeView: View {
                         }
                     }
                     .buttonStyle(.bordered)
-                    .simultaneousGesture(
-                        TapGesture()
-                            .onEnded { _ in
-                                isMuted.toggle()
-                                UserDefaults.standard.set(isMuted, forKey: "MetronomeIsMuted")
-                            }
-                    )
-                    .simultaneousGesture(
-                        LongPressGesture(minimumDuration: 0.5)
-                            .onEnded { _ in
-                                showVolumeSheet()
-                            }
-                    )
                     
                     Button(action: {
                         metronomeManager.isHapticFeedbackEnabled.toggle()
