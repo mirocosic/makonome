@@ -85,6 +85,7 @@ struct MetronomeView: View {
     @State private var showingTempoChangerPicker = false
     @State private var showingVolumeSheet = false
     @State private var displayVolume: Float = 0.8
+    @State private var displayHapticEnabled = false
     
     
     var beatIndicatorSize: CGFloat {
@@ -327,12 +328,13 @@ struct MetronomeView: View {
                     .buttonStyle(.bordered)
                     
                     Button(action: {
-                        metronomeManager.isHapticFeedbackEnabled.toggle()
+                        displayHapticEnabled.toggle()
+                        metronomeManager.isHapticFeedbackEnabled = displayHapticEnabled
                         triggerHapticFeedback()
                     }) {
-                        Image(systemName: metronomeManager.isHapticFeedbackEnabled ? "iphone.radiowaves.left.and.right" : "iphone.slash")
+                        Image(systemName: displayHapticEnabled ? "iphone.radiowaves.left.and.right" : "iphone.slash")
                             .font(.title2)
-                            .foregroundColor(metronomeManager.isHapticFeedbackEnabled ? .blue : .gray)
+                            .foregroundColor(displayHapticEnabled ? .blue : .gray)
                     }
                     .buttonStyle(.bordered)
                 }
@@ -418,6 +420,9 @@ struct MetronomeView: View {
         }
         .onAppear {
             displayVolume = metronomeManager.volume
+            displayHapticEnabled = metronomeManager.isHapticFeedbackEnabled
+            // Reset mute state since we're now using volume-based muting
+            metronomeManager.isMuted = false
         }
     }
     

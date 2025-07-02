@@ -262,7 +262,7 @@ class MetronomeManager: ObservableObject {
             try AVAudioSession.sharedInstance().setCategory(
                 .playback, 
                 mode: .default, 
-                options: [.duckOthers, .allowBluetooth, .defaultToSpeaker]
+                options: [.duckOthers, .allowBluetooth]
             )
             try AVAudioSession.sharedInstance().setActive(true)
             print("🔊 Audio session configured for reliable background playback")
@@ -351,7 +351,7 @@ class MetronomeManager: ObservableObject {
             return
         }
         
-        // Handle normal and accented beats
+        // Handle normal and accented beats - play audio if not muted AND volume > 0
         if !isMuted && volume > 0 {
             switch beatState {
             case .accented:
