@@ -147,6 +147,22 @@ class MetronomeManager: ObservableObject {
         set { UserDefaults.standard.set(newValue, forKey: "HapticIntensity") }
     }
     
+    var volume: Float {
+        get { 
+            if UserDefaults.standard.object(forKey: "MetronomeVolume") == nil {
+                // Key doesn't exist, return default
+                return 0.8
+            } else {
+                // Key exists, return the stored value (could be 0.0)
+                return UserDefaults.standard.float(forKey: "MetronomeVolume")
+            }
+        }
+        set { 
+            UserDefaults.standard.set(newValue, forKey: "MetronomeVolume")
+            updateAudioPlayerVolumes()
+        }
+    }
+    
     
     // Private implementation details
     private var timer: DispatchSourceTimer?
@@ -380,10 +396,18 @@ class MetronomeManager: ObservableObject {
             accentClickPlayer = try AVAudioPlayer(contentsOf: accentSoundURL)
             accentClickPlayer?.prepareToPlay()
             
+            // Set initial volume
+            updateAudioPlayerVolumes()
+            
             print("🔊 \(sound.rawValue) sounds loaded successfully from MP3 files")
         } catch {
             print("Failed to load metronome sounds: \(error)")
         }
+    }
+    
+    private func updateAudioPlayerVolumes() {
+        normalClickPlayer?.volume = volume
+        accentClickPlayer?.volume = volume
     }
     
     

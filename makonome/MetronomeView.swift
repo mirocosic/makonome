@@ -84,6 +84,8 @@ struct MetronomeView: View {
     @State private var tempoChangerBarInterval = UserDefaults.standard.integer(forKey: "TempoChangerBarInterval") != 0 ? UserDefaults.standard.integer(forKey: "TempoChangerBarInterval") : 4
     @State private var tempoChangerStartingBar = 1
     @State private var showingTempoChangerPicker = false
+    @State private var showingVolumeSheet = false
+    @State private var displayVolume: Float = 0.8
     
     
     var beatIndicatorSize: CGFloat {
@@ -308,14 +310,35 @@ struct MetronomeView: View {
                     .font(.title2)
                     
                     Button(action: {
-                        isMuted.toggle()
-                        UserDefaults.standard.set(isMuted, forKey: "MetronomeIsMuted")
+                        // Empty action - we'll handle tap and long press separately
                     }) {
-                        Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                            .font(.title2)
-                            .foregroundColor(isMuted ? .red : .blue)
+                        VStack(spacing: 2) {
+                            Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                                .font(.title2)
+                                .foregroundColor(isMuted ? .red : .blue)
+                            
+                            if !isMuted {
+                                Text("\(Int(displayVolume * 100))%")
+                                    .font(.caption2)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
                     .buttonStyle(.bordered)
+                    .simultaneousGesture(
+                        TapGesture()
+                            .onEnded { _ in
+                                isMuted.toggle()
+                                UserDefaults.standard.set(isMuted, forKey: "MetronomeIsMuted")
+                            }
+                    )
+                    .simultaneousGesture(
+                        LongPressGesture(minimumDuration: 0.5)
+                            .onEnded { _ in
+                                showVolumeSheet()
+                            }
+                    )
                     
                     Button(action: {
                         metronomeManager.isHapticFeedbackEnabled.toggle()
@@ -404,6 +427,12 @@ struct MetronomeView: View {
             }
         }
         .ignoresSafeArea(.keyboard, edges: .all)
+        .sheet(isPresented: $showingVolumeSheet) {
+            VolumeControlSheet(metronomeManager: metronomeManager, displayVolume: $displayVolume)
+        }
+        .onAppear {
+            displayVolume = metronomeManager.volume
+        }
     }
     
     
@@ -573,9 +602,99 @@ struct MetronomeView: View {
             isEditingBPM = false
         }
     }
+    
+    private func showVolumeSheet() {
+        triggerHapticFeedback()
+        showingVolumeSheet = true
+    }
 }
 
-
+struct VolumeControlSheet: View {
+    @ObservedObject var metronomeManager: MetronomeManager
+    @Binding var displayVolume: Float
+    @Environment(\.dismiss) private var dismiss
+    @State private var autoHideTimer: Timer?
+    @State private var localVolume: Double = 0.0
+    
+    private var volumeIcon: String {
+        let volume = metronomeManager.volume
+        if volume == 0 {
+            return "speaker.slash.fill"
+        } else if volume < 0.33 {
+            return "speaker.wave.1.fill"
+        } else if volume < 0.66 {
+            return "speaker.wave.2.fill"
+        } else {
+            return "speaker.wave.3.fill"
+        }
+    }
+    
+    var body: some View {
+        VStack(spacing: 30) {
+            // Drag indicator
+            RoundedRectangle(cornerRadius: 2.5)
+                .fill(Color.secondary.opacity(0.5))
+                .frame(width: 40, height: 5)
+                .padding(.top, 8)
+            
+            // Volume percentage
+            Text("\(Int(localVolume * 100))%")
+                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundColor(.primary)
+            
+            // Volume slider
+            HStack {
+                Image(systemName: "speaker.fill")
+                    .foregroundColor(.secondary)
+                    .font(.title2)
+                
+                Slider(value: Binding(
+                    get: { localVolume },
+                    set: { newValue in
+                        localVolume = newValue
+                        metronomeManager.volume = Float(newValue)
+                        displayVolume = Float(newValue)
+                        restartAutoHideTimer()
+                        // Trigger light haptic feedback
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred()
+                    }
+                ), in: 0.0...1.0)
+                .accentColor(.blue)
+                
+                Image(systemName: "speaker.wave.3.fill")
+                    .foregroundColor(.secondary)
+                    .font(.title2)
+            }
+            .padding(.horizontal)
+            
+            Spacer()
+        }
+        .padding()
+        .presentationDetents([.height(200)])
+        .presentationDragIndicator(.hidden) // We have our own
+        .onAppear {
+            localVolume = Double(metronomeManager.volume)
+            displayVolume = metronomeManager.volume
+            startAutoHideTimer()
+        }
+        .onDisappear {
+            autoHideTimer?.invalidate()
+        }
+    }
+    
+    private func startAutoHideTimer() {
+        autoHideTimer?.invalidate()
+        autoHideTimer = Timer.scheduledTimer(withTimeInterval: 6.0, repeats: false) { _ in
+            dismiss()
+        }
+    }
+    
+    private func restartAutoHideTimer() {
+        startAutoHideTimer()
+    }
+}
 
 #Preview {
     MetronomeView()
