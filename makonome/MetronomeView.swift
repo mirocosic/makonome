@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AVFoundation
+import MediaPlayer
 
 enum BeatState: String, CaseIterable, Codable {
     case normal = "normal"
@@ -86,6 +87,9 @@ struct MetronomeView: View {
     @State private var showingTempoChangerPicker = false
     @State private var showingVolumeSheet = false
     @State private var displayVolume: Float = 0.8
+    @State private var systemVolumeView: MPVolumeView?
+    @State private var isMonitoringSystemVolume = false
+    @State private var volumeMonitorTimer: Timer?
     
     
     var beatIndicatorSize: CGFloat {
@@ -428,10 +432,25 @@ struct MetronomeView: View {
         }
         .ignoresSafeArea(.keyboard, edges: .all)
         .sheet(isPresented: $showingVolumeSheet) {
-            VolumeControlSheet(metronomeManager: metronomeManager, displayVolume: $displayVolume)
+            VolumeControlSheet(
+                metronomeManager: metronomeManager, 
+                displayVolume: $displayVolume,
+                onVolumeChange: { volume in
+                    syncAppVolumeToSystem()
+                }
+            )
         }
+        .overlay(
+            // Hidden MPVolumeView to capture physical volume button presses
+            SystemVolumeView(systemVolumeView: $systemVolumeView)
+        )
         .onAppear {
             displayVolume = metronomeManager.volume
+            setupVolumeMonitoring()
+        }
+        .onDisappear {
+            removeVolumeMonitoring()
+            print("🔄 Volume monitoring stopped")
         }
     }
     
@@ -607,6 +626,101 @@ struct MetronomeView: View {
         triggerHapticFeedback()
         showingVolumeSheet = true
     }
+    
+    private func setupVolumeMonitoring() {
+        // Start monitoring system volume changes
+        isMonitoringSystemVolume = true
+        
+        // Sync initial volume
+        let currentSystemVolume = AVAudioSession.sharedInstance().outputVolume
+        metronomeManager.volume = currentSystemVolume
+        displayVolume = currentSystemVolume
+        
+        // Start timer to monitor volume changes
+        volumeMonitorTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            guard self.isMonitoringSystemVolume else { return }
+            
+            let systemVolume = AVAudioSession.sharedInstance().outputVolume
+            
+            // Only update if there's a significant difference to avoid constant updates
+            if abs(systemVolume - self.metronomeManager.volume) > 0.01 {
+                DispatchQueue.main.async {
+                    self.metronomeManager.volume = systemVolume
+                    self.displayVolume = systemVolume
+                    print("📱 System volume changed to: \(Int(systemVolume * 100))%")
+                }
+            }
+        }
+    }
+    
+    private func removeVolumeMonitoring() {
+        isMonitoringSystemVolume = false
+        volumeMonitorTimer?.invalidate()
+        volumeMonitorTimer = nil
+    }
+    
+    private func syncAppVolumeToSystem() {
+        // Update system volume to match app volume
+        guard let volumeView = systemVolumeView else {
+            print("⚠️ System volume view not found")
+            return
+        }
+        
+        // Find the volume slider in the MPVolumeView
+        func findVolumeSlider(in view: UIView) -> UISlider? {
+            if let slider = view as? UISlider {
+                return slider
+            }
+            for subview in view.subviews {
+                if let slider = findVolumeSlider(in: subview) {
+                    return slider
+                }
+            }
+            return nil
+        }
+        
+        guard let volumeSlider = findVolumeSlider(in: volumeView) else {
+            print("⚠️ Volume slider not found in MPVolumeView")
+            return
+        }
+        
+        // Temporarily disable monitoring to prevent feedback loop
+        isMonitoringSystemVolume = false
+        
+        DispatchQueue.main.async {
+            volumeSlider.value = self.metronomeManager.volume
+            print("🔄 Synced app volume to system: \(Int(self.metronomeManager.volume * 100))%")
+            
+            // Re-enable monitoring after a short delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                self.isMonitoringSystemVolume = true
+            }
+        }
+    }
+}
+
+struct SystemVolumeView: UIViewRepresentable {
+    @Binding var systemVolumeView: MPVolumeView?
+    
+    func makeUIView(context: Context) -> MPVolumeView {
+        let volumeView = MPVolumeView(frame: CGRect.zero)
+        volumeView.alpha = 0.01 // Very low but not completely invisible
+        volumeView.showsVolumeSlider = true
+        volumeView.showsRouteButton = false
+        volumeView.sizeToFit()
+        
+        // Store reference and setup after a delay to ensure proper initialization
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            systemVolumeView = volumeView
+            print("🎛️ MPVolumeView initialized with \(volumeView.subviews.count) subviews")
+        }
+        
+        return volumeView
+    }
+    
+    func updateUIView(_ uiView: MPVolumeView, context: Context) {
+        // No updates needed
+    }
 }
 
 struct VolumeControlSheet: View {
@@ -615,6 +729,9 @@ struct VolumeControlSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var autoHideTimer: Timer?
     @State private var localVolume: Double = 0.0
+    
+    // Add callback for syncing to system volume
+    var onVolumeChange: ((Float) -> Void)?
     
     private var volumeIcon: String {
         let volume = metronomeManager.volume
@@ -655,6 +772,7 @@ struct VolumeControlSheet: View {
                         localVolume = newValue
                         metronomeManager.volume = Float(newValue)
                         displayVolume = Float(newValue)
+                        onVolumeChange?(Float(newValue))
                         restartAutoHideTimer()
                         // Trigger light haptic feedback
                         let generator = UIImpactFeedbackGenerator(style: .light)
