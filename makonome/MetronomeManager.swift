@@ -137,6 +137,16 @@ class MetronomeManager: ObservableObject {
         set { UserDefaults.standard.set(newValue, forKey: "TempoChangerBarInterval") }
     }
     
+    var isHapticFeedbackEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: "HapticFeedbackEnabled") }
+        set { UserDefaults.standard.set(newValue, forKey: "HapticFeedbackEnabled") }
+    }
+    
+    var hapticIntensity: String {
+        get { UserDefaults.standard.string(forKey: "HapticIntensity") ?? "medium" }
+        set { UserDefaults.standard.set(newValue, forKey: "HapticIntensity") }
+    }
+    
     
     // Private implementation details
     private var timer: DispatchSourceTimer?
@@ -152,9 +162,15 @@ class MetronomeManager: ObservableObject {
     private var wasPlayingBeforeInterruption = false
     private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
     
+    // Haptic feedback generators
+    private var lightHapticGenerator: UIImpactFeedbackGenerator?
+    private var mediumHapticGenerator: UIImpactFeedbackGenerator?
+    private var heavyHapticGenerator: UIImpactFeedbackGenerator?
+    
     private init() {
         setupClickSounds()
         setupInterruptionHandling()
+        setupHapticGenerators()
     }
     
     func updateSelectedSound(_ newSound: MetronomeSound) {
@@ -306,20 +322,39 @@ class MetronomeManager: ObservableObject {
     private func playClick() {
         // Check gap trainer muting first
         if isGapTrainerEnabled && !gapTrainerInNormalPhase {
+            // Trigger haptic even during gap trainer muted phase
+            triggerHapticFeedback()
             return
         }
         
-        guard !isMuted else { return }
-        
         let beatState = beatStates[beatCount] ?? .normal
         
-        switch beatState {
-        case .muted:
+        // Handle muted beats - no audio but still haptic
+        if beatState == .muted {
+            triggerHapticFeedback()
             return
+        }
+        
+        // Handle normal and accented beats
+        if !isMuted {
+            switch beatState {
+            case .accented:
+                playAccentClick()
+            case .normal:
+                playNormalClick()
+            case .muted:
+                break // Already handled above
+            }
+        }
+        
+        // Trigger haptic for all non-muted beats
+        switch beatState {
         case .accented:
-            playAccentClick()
+            triggerHapticFeedback(isAccented: true)
         case .normal:
-            playNormalClick()
+            triggerHapticFeedback()
+        case .muted:
+            break // Already handled above
         }
     }
     
@@ -362,6 +397,46 @@ class MetronomeManager: ObservableObject {
         accentClickPlayer?.stop()
         accentClickPlayer?.currentTime = 0
         accentClickPlayer?.play()
+    }
+    
+    // MARK: - Haptic Feedback
+    
+    private func setupHapticGenerators() {
+        lightHapticGenerator = UIImpactFeedbackGenerator(style: .light)
+        mediumHapticGenerator = UIImpactFeedbackGenerator(style: .medium)
+        heavyHapticGenerator = UIImpactFeedbackGenerator(style: .heavy)
+        
+        // Prepare generators for more responsive feedback
+        lightHapticGenerator?.prepare()
+        mediumHapticGenerator?.prepare()
+        heavyHapticGenerator?.prepare()
+    }
+    
+    private func triggerHapticFeedback(isAccented: Bool = false) {
+        guard isHapticFeedbackEnabled else { return }
+        
+        // Skip haptic feedback at very high tempos to prevent performance issues
+        let effectiveBPM = bpm * subdivision.multiplier
+        guard effectiveBPM <= 300 else { return }
+        
+        let generator: UIImpactFeedbackGenerator?
+        
+        if isAccented {
+            // Always use heavy haptic for accented beats regardless of setting
+            generator = heavyHapticGenerator
+        } else {
+            // Use user's selected intensity for normal beats
+            switch hapticIntensity {
+            case "light":
+                generator = lightHapticGenerator
+            case "heavy":
+                generator = heavyHapticGenerator
+            default: // "medium"
+                generator = mediumHapticGenerator
+            }
+        }
+        
+        generator?.impactOccurred()
     }
     
     // MARK: - Audio Interruption Handling

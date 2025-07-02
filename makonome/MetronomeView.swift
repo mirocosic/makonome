@@ -316,6 +316,16 @@ struct MetronomeView: View {
                             .foregroundColor(isMuted ? .red : .blue)
                     }
                     .buttonStyle(.bordered)
+                    
+                    Button(action: {
+                        metronomeManager.isHapticFeedbackEnabled.toggle()
+                        triggerHapticFeedback()
+                    }) {
+                        Image(systemName: metronomeManager.isHapticFeedbackEnabled ? "iphone.radiowaves.left.and.right" : "iphone.slash")
+                            .font(.title2)
+                            .foregroundColor(metronomeManager.isHapticFeedbackEnabled ? .blue : .gray)
+                    }
+                    .buttonStyle(.bordered)
                 }
                 
                 VStack {

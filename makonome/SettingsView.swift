@@ -71,6 +71,52 @@ struct SettingsView: View {
                 }
                 
                 Section {
+                    Toggle(isOn: Binding(
+                        get: { UserDefaults.standard.bool(forKey: "HapticFeedbackEnabled") },
+                        set: { UserDefaults.standard.set($0, forKey: "HapticFeedbackEnabled") }
+                    )) {
+                        HStack {
+                            Image(systemName: "iphone.radiowaves.left.and.right")
+                                .foregroundColor(.secondary)
+                                .frame(width: 20)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Haptic Feedback")
+                                Text("Feel the beat through vibration")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    
+                    if UserDefaults.standard.bool(forKey: "HapticFeedbackEnabled") {
+                        HStack {
+                            Image(systemName: "dial.max.fill")
+                                .foregroundColor(.secondary)
+                                .frame(width: 20)
+                            
+                            Picker("Haptic Intensity", selection: Binding(
+                                get: { 
+                                    UserDefaults.standard.string(forKey: "HapticIntensity") ?? "medium"
+                                },
+                                set: { UserDefaults.standard.set($0, forKey: "HapticIntensity") }
+                            )) {
+                                Text("Light").tag("light")
+                                Text("Medium").tag("medium")
+                                Text("Heavy").tag("heavy")
+                            }
+                            .pickerStyle(.menu)
+                        }
+                    }
+                } header: {
+                    Text("Haptic Feedback")
+                } footer: {
+                    if UserDefaults.standard.bool(forKey: "HapticFeedbackEnabled") {
+                        Text("Haptic feedback works best at slower tempos (under 180 BPM). At very high speeds, vibrations may feel less distinct.")
+                    }
+                }
+                
+                Section {
                     Toggle(isOn: $autoStartMetronome) {
                         HStack {
                             Image(systemName: "metronome")
