@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Makonome is a SwiftUI iOS application that provides metronome and stopwatch functionality. The app features a tabbed interface with three main sections: Stopwatch, Metronome, and Settings. The project uses the modern Swift Testing framework for unit tests.
+Makonome is a SwiftUI iOS application that provides comprehensive practice session management and metronome functionality. The app features a tabbed interface with three main sections: Metronome, Practice, and Settings. The app focuses on helping musicians track their practice sessions with advanced metronome features, daily reminders, and detailed session history. The project uses the modern Swift Testing framework for unit tests.
 
 ## Development Commands
 
@@ -50,27 +50,71 @@ xcrun simctl launch booted com.mirocosic.makonome
 ### Project Structure
 - `makonome/` - Main application source code
   - `makonomeApp.swift` - App entry point using `@main` with ThemeManager integration
-  - `MainTabView.swift` - Tab-based navigation with three main views
-  - `MetronomeView.swift` - Metronome functionality with AVFoundation audio
-  - `StopwatchView.swift` - Stopwatch functionality
-  - `SettingsView.swift` - Application settings and preferences
-  - `PresetView.swift` - Preset management for metronome settings
-  - `ThemeManager.swift` - Theme management (light/dark/system)
-  - `UsageTracker.swift` - Usage tracking functionality
-  - `Assets.xcassets/` - App icons and visual assets
+  - `MainTabView.swift` - Tab-based navigation with Metronome, Practice, and Settings tabs
+  - **Metronome Components:**
+    - `MetronomeView.swift` - Main metronome interface with advanced features
+    - `BPMScrollWheel.swift` & `SimpleBPMScrollWheel.swift` - Alternative BPM input methods
+    - `BeatsPerBarPickerSheet.swift` - Beats per bar selection
+    - `SubdivisionPickerSheet.swift` - Note subdivision selection
+    - `GapTrainerPickerSheet.swift` - Gap trainer configuration
+    - `TempoChangerPickerSheet.swift` - Tempo changer configuration
+  - **Practice Session Components:**
+    - `PracticeSessionView.swift` - Main practice session interface
+    - `SessionManager.swift` - Practice session management and persistence
+    - `PracticeSession.swift` - Practice session data model
+    - `SessionHistoryView.swift` - Practice session history browser
+  - **Settings and Management:**
+    - `SettingsView.swift` - Application settings and preferences
+    - `PresetView.swift` - Preset management for metronome settings
+    - `ThemeManager.swift` - Theme management (light/dark/system)
+    - `NotificationManager.swift` - Daily practice reminder notifications
+  - **Utilities:**
+    - `UsageTracker.swift` - Usage tracking functionality
+  - **Assets:**
+    - `Assets.xcassets/` - App icons and visual assets
+    - Audio files: `click.mp3`, `click1.mp3`, `clave.mp3`, `clave1.mp3`
 - `makonomeTests/` - Unit tests using Swift Testing framework
 - `makonomeUITests/` - UI automation tests
+- `auto-build.sh` - Development script for live reloading
 
 ### Key Features
-- **Metronome**: Full-featured metronome with note subdivisions, tempo control, and audio playback
-- **Stopwatch**: Standard stopwatch functionality with lap timing
+- **Advanced Metronome**: Full-featured metronome with note subdivisions, tempo control, multiple sounds (click/clave), Gap Trainer, and Tempo Changer
+- **Practice Sessions**: Comprehensive session management with goal setting, history tracking, and progress monitoring
+- **Daily Reminders**: Configurable push notifications to encourage regular practice
+- **Audio Enhancement**: Background playback, volume control, haptic feedback, and audio interruption handling
 - **Theme Management**: Light, dark, and system theme support
-- **Usage Tracking**: Session and total usage tracking
-- **Presets**: Save and manage metronome configurations
+- **Usage Tracking**: Detailed session and total usage tracking with persistence
+- **Presets**: Save and manage metronome configurations with beat patterns
+
+### Practice Session System
+The app includes a comprehensive practice session management system:
+- **Session Tracking**: Start, pause, and complete practice sessions with automatic timing
+- **Goal Setting**: Set target practice durations and track progress
+- **Session History**: View detailed history of all practice sessions with dates and durations
+- **Progress Monitoring**: Track daily and total practice time
+- **Session Integration**: Seamlessly integrate with metronome presets and settings
+- **Persistence**: All session data is automatically saved and restored
+
+### Daily Reminders & Notifications
+- **Push Notifications**: Configurable daily practice reminders
+- **Permission Management**: Automatic notification permission handling
+- **Customizable Timing**: Set preferred reminder times
+- **Developer Mode**: Test notifications for development
+
+### Advanced Metronome Features
+- **Gap Trainer**: Alternating normal/muted phases to test internal timing
+- **Tempo Changer**: Gradually increases BPM during practice sessions
+- **Multiple Sounds**: Click and Clave sounds with separate accent files
+- **Volume Control**: Independent volume adjustment with live feedback
+- **Haptic Feedback**: Configurable haptic intensity for tactile beats
+- **Note Subdivisions**: Quarter, eighth, sixteenth, triplet, and quintuplet patterns
+- **Background Audio**: Continuous playback with audio interruption handling
+- **Beat Patterns**: Complex accent patterns for various time signatures
 
 ### Frameworks and Dependencies
 - **SwiftUI**: Primary UI framework
-- **AVFoundation**: Audio playback for metronome clicks
+- **AVFoundation**: Audio playback for metronome clicks and background audio
+- **UserNotifications**: Push notifications for practice reminders
 - **Foundation**: Core framework for data management and UserDefaults
 - **Swift Testing**: Modern testing framework with `@Test` annotations
 
@@ -81,10 +125,20 @@ xcrun simctl launch booted com.mirocosic.makonome
 - Preview support enabled with `#Preview` macro
 - Tab-based navigation with SF Symbols icons
 
+### Background Audio Capabilities
+- **Background Playback**: App continues playing metronome when backgrounded
+- **Audio Interruption Handling**: Graceful handling of phone calls and other audio interruptions
+- **Background Task Management**: Maintains timing accuracy during background execution
+- **Audio Session Configuration**: Optimized for reliable background audio performance
+- **Info.plist Configuration**: Includes required background audio modes
+
 ## Development Notes
 
 - The project uses modern Swift features including the new Swift Testing framework
 - SwiftUI previews are configured for rapid development iteration
 - Standard iOS app structure with separate test targets for unit and UI testing
 - Theme management is handled through environment objects
-- Usage tracking persists data using UserDefaults
+- All data persistence uses UserDefaults with JSON encoding for complex structures
+- Audio system uses multiple AVAudioPlayer instances for different sounds
+- Notification permissions are handled automatically with user-friendly prompts
+- Bundle identifier: `com.mirocosic.makonome`
