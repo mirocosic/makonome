@@ -440,7 +440,7 @@ struct MetronomeView: View {
                 handleMicrophoneTempoDetection(detectedBPM)
                 showingTempoDetectionSheet = false
             }
-            .presentationDetents([.medium])
+            .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
         .onAppear {

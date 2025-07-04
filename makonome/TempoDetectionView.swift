@@ -10,157 +10,192 @@ struct TempoDetectionView: View {
     let onBPMDetected: (Double) -> Void
     
     var body: some View {
-        VStack(spacing: 20) {
-            // Detection Status
-            VStack(spacing: 8) {
-                Text("Tempo Detection")
-                    .font(.headline)
-                
-                if detectionEngine.isDetecting {
-                    Text("Listening...")
-                        .foregroundColor(.blue)
-                        .font(.subheadline)
-                } else {
-                    Text("Tap to start detection")
-                        .foregroundColor(.secondary)
-                        .font(.subheadline)
-                }
-            }
-            
-            // Audio Level Indicator and Gain Control
-            if detectionEngine.isDetecting {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Header
                 VStack(spacing: 8) {
                     HStack {
-                        Text("Audio Level")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Spacer()
-                        
-                        Text("Gain: \(String(format: "%.1f", detectionEngine.inputGain))x")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        Image(systemName: "mic.fill")
+                            .font(.title2)
+                            .foregroundColor(.blue)
+                        Text("Tempo Detection")
+                            .font(.title2)
+                            .fontWeight(.semibold)
                     }
                     
-                    ProgressView(value: Double(detectionEngine.audioLevel), total: 1.0)
-                        .progressViewStyle(LinearProgressViewStyle(tint: audioLevelColor))
-                        .frame(height: 8)
-                        .scaleEffect(x: 1, y: 1.5)
-                    
-                    // Input Gain Slider
-                    HStack {
-                        Image(systemName: "minus")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Slider(value: $detectionEngine.inputGain, in: 1.0...10.0, step: 0.5)
-                            .frame(height: 20)
-                        
-                        Image(systemName: "plus")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Button("Auto") {
-                            detectionEngine.adjustGainAutomatically()
-                        }
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.blue.opacity(0.1))
-                        .foregroundColor(.blue)
-                        .cornerRadius(4)
-                    }
-                    
-                    // Noise reduction controls
-                    VStack(spacing: 4) {
-                        HStack {
-                            Text("Noise Gate")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            Spacer()
-                            
-                            Button("Calibrate") {
-                                detectionEngine.calibrateNoiseFloor()
-                            }
-                            .font(.caption)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.orange.opacity(0.1))
-                            .foregroundColor(.orange)
-                            .cornerRadius(4)
-                        }
-                        
-                        Slider(value: $detectionEngine.noiseGateThreshold, in: 0.01...0.1, step: 0.005)
-                            .frame(height: 16)
-                    }
+                    Text(detectionEngine.isDetecting ? "Listening for tempo..." : "Detect tempo from audio input")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
                 }
-                .animation(.easeInOut(duration: 0.1), value: detectionEngine.audioLevel)
-            }
             
-            // Detected BPM Display
-            if detectionEngine.isDetecting {
-                VStack(spacing: 4) {
+                // Current BPM Display (always visible, more prominent when detecting)
+                VStack(spacing: 8) {
                     Text("\(Int(detectionEngine.currentBPM)) BPM")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
                         .monospacedDigit()
-                        .foregroundColor(.primary)
+                        .foregroundColor(detectionEngine.isDetecting ? .primary : .secondary)
                     
                     // Confidence indicator
-                    HStack(spacing: 4) {
+                    HStack(spacing: 8) {
                         Text("Confidence:")
                             .font(.caption)
                             .foregroundColor(.secondary)
                         
-                        ForEach(0..<5) { index in
-                            Circle()
-                                .fill(confidenceColor(for: index))
-                                .frame(width: 8, height: 8)
+                        HStack(spacing: 4) {
+                            ForEach(0..<5, id: \.self) { index in
+                                Circle()
+                                    .fill(confidenceColor(for: index))
+                                    .frame(width: 8, height: 8)
+                            }
                         }
                     }
                 }
+                .padding(.vertical, 8)
                 .animation(.easeInOut(duration: 0.2), value: detectionEngine.currentBPM)
-            }
-            
-            // Main Detection Button
-            Button(action: {
-                handleDetectionToggle()
-            }) {
-                HStack {
-                    Image(systemName: detectionEngine.isDetecting ? "mic.fill" : "mic")
-                        .font(.title2)
-                    Text(detectionEngine.isDetecting ? "Stop Detection" : "Start Detection")
-                        .font(.headline)
+                
+                // Audio Controls Section (always visible)
+                VStack(spacing: 16) {
+                        // Audio Level Monitor
+                        VStack(spacing: 8) {
+                            HStack {
+                                Text("Audio Level")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Text("Gain: \(String(format: "%.1f", detectionEngine.inputGain))x")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            ProgressView(value: Double(detectionEngine.audioLevel), total: 1.0)
+                                .progressViewStyle(LinearProgressViewStyle(tint: audioLevelColor))
+                                .frame(height: 12)
+                                .background(Color.secondary.opacity(0.1))
+                                .cornerRadius(6)
+                        }
+                        .padding()
+                        .background(Color.secondary.opacity(0.05))
+                        .cornerRadius(12)
+                        
+                        // Gain Control
+                        VStack(spacing: 12) {
+                            HStack {
+                                Text("Input Gain")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Button("Auto") {
+                                    detectionEngine.adjustGainAutomatically()
+                                }
+                                .font(.caption)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.1))
+                                .foregroundColor(.blue)
+                                .cornerRadius(8)
+                            }
+                            
+                            HStack {
+                                Text("1x")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Slider(value: $detectionEngine.inputGain, in: 1.0...10.0, step: 0.5)
+                                
+                                Text("10x")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding()
+                        .background(Color.secondary.opacity(0.05))
+                        .cornerRadius(12)
+                        
+                        // Noise Gate Control
+                        VStack(spacing: 12) {
+                            HStack {
+                                Text("Noise Gate")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Button("Calibrate") {
+                                    detectionEngine.calibrateNoiseFloor()
+                                }
+                                .font(.caption)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.orange.opacity(0.1))
+                                .foregroundColor(.orange)
+                                .cornerRadius(8)
+                            }
+                            
+                            HStack {
+                                Text("Low")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Slider(value: $detectionEngine.noiseGateThreshold, in: 0.01...0.1, step: 0.005)
+                                
+                                Text("High")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding()
+                        .background(Color.secondary.opacity(0.05))
+                        .cornerRadius(12)
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
-                .background(detectionEngine.isDetecting ? Color.red.opacity(0.1) : Color.blue.opacity(0.1))
-                .foregroundColor(detectionEngine.isDetecting ? .red : .blue)
-                .cornerRadius(12)
-            }
-            .disabled(isRequestingPermission)
+                .animation(.easeInOut(duration: 0.1), value: detectionEngine.audioLevel)
             
-            // Apply BPM Button (only show when detecting and has good confidence)
-            if detectionEngine.isDetecting && detectionEngine.confidenceScore > 0.5 {
-                Button(action: {
-                    onBPMDetected(detectionEngine.currentBPM)
-                }) {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                        Text("Apply \(Int(detectionEngine.currentBPM)) BPM")
+                // Main Action Buttons
+                VStack(spacing: 12) {
+                    // Primary Detection Button
+                    Button(action: {
+                        handleDetectionToggle()
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: detectionEngine.isDetecting ? "stop.fill" : "mic.fill")
+                                .font(.title2)
+                            Text(detectionEngine.isDetecting ? "Stop Detection" : "Start Detection")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(detectionEngine.isDetecting ? Color.red : Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(16)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(Color.green.opacity(0.1))
-                    .foregroundColor(.green)
-                    .cornerRadius(10)
+                    .disabled(isRequestingPermission)
+                    
+                    // Apply BPM Button (show when has good confidence, regardless of detection state)
+                    if detectionEngine.confidenceScore > 0.3 {
+                        Button(action: {
+                            onBPMDetected(detectionEngine.currentBPM)
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.title3)
+                                Text("Apply \(Int(detectionEngine.currentBPM)) BPM")
+                                    .font(.headline)
+                                    .fontWeight(.medium)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.green)
+                            .foregroundColor(.white)
+                            .cornerRadius(16)
+                        }
+                        .transition(.asymmetric(
+                            insertion: .scale.combined(with: .opacity),
+                            removal: .opacity
+                        ))
+                    }
                 }
-                .transition(.opacity.combined(with: .scale))
             }
         }
-        .padding()
-        .background(Color.secondary.opacity(0.1))
-        .cornerRadius(16)
+        .padding(20)
         .onAppear {
             permissionManager.updatePermissionStatus()
         }
