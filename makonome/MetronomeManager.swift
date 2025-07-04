@@ -257,15 +257,29 @@ class MetronomeManager: ObservableObject {
     }
     
     private func setupAudio() {
+        setupAudioSession(forRecording: false)
+    }
+    
+    func setupAudioSession(forRecording: Bool) {
         do {
-            // Use .playback category for background audio with comprehensive options
-            try AVAudioSession.sharedInstance().setCategory(
-                .playback, 
-                mode: .default, 
-                options: [.duckOthers, .allowBluetooth]
-            )
+            if forRecording {
+                // Use .playAndRecord category for both metronome and microphone input
+                try AVAudioSession.sharedInstance().setCategory(
+                    .playAndRecord,
+                    mode: .default,
+                    options: [.duckOthers, .allowBluetooth, .defaultToSpeaker]
+                )
+                print("🔊 Audio session configured for recording and playback")
+            } else {
+                // Use .playback category for background audio with comprehensive options
+                try AVAudioSession.sharedInstance().setCategory(
+                    .playback, 
+                    mode: .default, 
+                    options: [.duckOthers, .allowBluetooth]
+                )
+                print("🔊 Audio session configured for reliable background playback")
+            }
             try AVAudioSession.sharedInstance().setActive(true)
-            print("🔊 Audio session configured for reliable background playback")
         } catch {
             print("Failed to setup audio session: \(error)")
         }

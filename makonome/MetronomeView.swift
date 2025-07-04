@@ -84,6 +84,7 @@ struct MetronomeView: View {
     @State private var tempoChangerStartingBar = 1
     @State private var showingTempoChangerPicker = false
     @State private var showingVolumeSheet = false
+    @State private var showingTempoDetectionSheet = false
     @State private var displayVolume: Float = 0.8
     @State private var displayHapticEnabled = false
     
@@ -175,18 +176,34 @@ struct MetronomeView: View {
                     // SimpleBPMScrollWheel(bpm: $bpm)
                     //     .padding(.horizontal)
                     
-                    Button(action: {
-                        handleTapTempo()
-                    }) {
-                        HStack {
-                            Image(systemName: "hand.tap.fill")
-                            Text(tapTimes.isEmpty ? "Tap Tempo" : "Tap \(tapTimes.count)")
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            handleTapTempo()
+                        }) {
+                            HStack {
+                                Image(systemName: "hand.tap.fill")
+                                Text(tapTimes.isEmpty ? "Tap Tempo" : "Tap \(tapTimes.count)")
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.blue.opacity(0.1))
+                            .foregroundColor(.blue)
+                            .cornerRadius(8)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.blue.opacity(0.1))
-                        .foregroundColor(.blue)
-                        .cornerRadius(8)
+                        
+                        Button(action: {
+                            showingTempoDetectionSheet = true
+                        }) {
+                            HStack {
+                                Image(systemName: "mic.fill")
+                                Text("Detect Tempo")
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.green.opacity(0.1))
+                            .foregroundColor(.green)
+                            .cornerRadius(8)
+                        }
                     }
                 }
                 
@@ -418,6 +435,14 @@ struct MetronomeView: View {
         .sheet(isPresented: $showingVolumeSheet) {
             VolumeControlSheet(metronomeManager: metronomeManager, displayVolume: $displayVolume)
         }
+        .sheet(isPresented: $showingTempoDetectionSheet) {
+            TempoDetectionView { detectedBPM in
+                handleMicrophoneTempoDetection(detectedBPM)
+                showingTempoDetectionSheet = false
+            }
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
         .onAppear {
             displayVolume = metronomeManager.volume
             displayHapticEnabled = metronomeManager.isHapticFeedbackEnabled
@@ -597,6 +622,18 @@ struct MetronomeView: View {
     private func showVolumeSheet() {
         triggerHapticFeedback()
         showingVolumeSheet = true
+    }
+    
+    private func handleMicrophoneTempoDetection(_ detectedBPM: Double) {
+        // Clamp BPM to valid range
+        let clampedBPM = max(40, min(400, detectedBPM))
+        bpm = clampedBPM
+        triggerHapticFeedback()
+        metronomeManager.bpm = bpm
+        
+        // Save the detected BPM
+        UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+        print("🎵 Microphone detected BPM: \(Int(detectedBPM)) -> Applied: \(Int(clampedBPM))")
     }
 }
 

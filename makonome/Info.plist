@@ -8,5 +8,7 @@
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Makonome uses the microphone to detect tempo from audio input, allowing you to set the metronome tempo by tapping or playing music.</string>
 </dict>
 </plist>
