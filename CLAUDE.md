@@ -8,14 +8,22 @@ Makonome is a SwiftUI iOS application that provides comprehensive practice sessi
 
 ## Development Commands
 
-### Auto-Build Script (Recommended)
-Start the auto-build watcher that rebuilds and relaunches the app on file changes:
-```bash
-./auto-build.sh &
-```
-This command should be run at the start of each development session to enable live reloading.
-
 ### Building and Running
+
+#### Using MCP Xcode Build Server (Recommended)
+When available, use the MCP Xcode Build server for optimized building:
+```bash
+# Build for iOS Simulator
+mcp__XcodeBuildMCP__build_sim_name_proj({ projectPath: "/Users/miro/projects/makonome/makonome.xcodeproj", scheme: "makonome", simulatorName: "iPhone 16" })
+
+# Build and run in one step
+mcp__XcodeBuildMCP__build_run_sim_name_proj({ projectPath: "/Users/miro/projects/makonome/makonome.xcodeproj", scheme: "makonome", simulatorName: "iPhone 16" })
+
+# Run tests
+mcp__XcodeBuildMCP__test_sim_name_proj({ projectPath: "/Users/miro/projects/makonome/makonome.xcodeproj", scheme: "makonome", simulatorName: "iPhone 16" })
+```
+
+#### Traditional Command Line
 - Open the project in Xcode: `open makonome.xcodeproj`
 - Build from command line: `xcodebuild -project makonome.xcodeproj -scheme makonome build`
 - Run tests: `xcodebuild test -project makonome.xcodeproj -scheme makonome -destination 'platform=iOS Simulator,name=iPhone 16'`
@@ -75,7 +83,6 @@ xcrun simctl launch booted com.mirocosic.makonome
     - Audio files: `click.mp3`, `click1.mp3`, `clave.mp3`, `clave1.mp3`
 - `makonomeTests/` - Unit tests using Swift Testing framework
 - `makonomeUITests/` - UI automation tests
-- `auto-build.sh` - Development script for live reloading
 
 ### Key Features
 - **Advanced Metronome**: Full-featured metronome with note subdivisions, tempo control, multiple sounds (click/clave), Gap Trainer, and Tempo Changer
@@ -142,3 +149,9 @@ The app includes a comprehensive practice session management system:
 - Audio system uses multiple AVAudioPlayer instances for different sounds
 - Notification permissions are handled automatically with user-friendly prompts
 - Bundle identifier: `com.mirocosic.makonome`
+
+## Simulator Guide
+
+- **How to Run the Simulator**:
+  - Use Xcode build commands from the "Building and Running" section
+  - Use command line simulator launch methods detailed in "Command Line Build and Run"
