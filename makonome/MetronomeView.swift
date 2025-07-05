@@ -108,6 +108,61 @@ struct MetronomeView: View {
                 GeometryReader { geometry in
                     VStack(spacing: 30) {
                 
+                // Beat Indicators at the top
+                VStack {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: min(beatsPerBar, 8)), spacing: 12) {
+                        ForEach(1...beatsPerBar, id: \.self) { beat in
+                            Button(action: {
+                                toggleBeatState(beat: beat)
+                            }) {
+                                Circle()
+                                    .fill(beatIndicatorColor(for: beat))
+                                    .frame(width: beatIndicatorSize, height: beatIndicatorSize)
+                                    .overlay(
+                                        Circle()
+                                            .stroke(beatIndicatorBorder(for: beat), lineWidth: 3)
+                                    )
+                                    .overlay(
+                                        beatIndicatorIcon(for: beat)
+                                    )
+                                    .overlay(
+                                        Text("\(beat)")
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(beatIndicatorTextColor(for: beat))
+                                    )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .scaleEffect(metronomeManager.isPlaying && metronomeManager.beatCount == beat ? 1.2 : 1.0)
+                            .animation(.easeInOut(duration: 0.1), value: metronomeManager.beatCount)
+                        }
+                    }
+                    
+                    if metronomeManager.isPlaying {
+                        VStack(spacing: 4) {
+                            Text("Bar \(metronomeManager.barCount), Beat \(metronomeManager.beatCount)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            
+                            if isGapTrainerEnabled {
+                                Text(gapTrainerInNormalPhase ? "Normal (\(gapTrainerCurrentCycle)/\(gapTrainerNormalBars))" : "Muted (\(gapTrainerCurrentCycle)/\(gapTrainerMutedBars))")
+                                    .font(.caption2)
+                                    .foregroundColor(gapTrainerInNormalPhase ? .softBlue : .softOrange)
+                                    .fontWeight(.medium)
+                            }
+                            
+                            if isTempoChangerEnabled {
+                                let barsCompleted = metronomeManager.barCount - tempoChangerStartingBar
+                                let nextIncreaseIn = tempoChangerBarInterval - (barsCompleted % tempoChangerBarInterval)
+                                Text("Tempo +\(tempoChangerBPMIncrement) in \(nextIncreaseIn) bars")
+                                    .font(.caption2)
+                                    .foregroundColor(.softGreen)
+                                    .fontWeight(.medium)
+                            }
+                        }
+                    }
+                }
+                
                 VStack {
                     HStack(spacing: 20) {
                         Button(action: {
@@ -183,12 +238,14 @@ struct MetronomeView: View {
                         Button(action: {
                             handleTapTempo()
                         }) {
-                            HStack {
+                            VStack(spacing: 4) {
                                 Image(systemName: "hand.tap.fill")
-                                Text(tapTimes.isEmpty ? "Tap Tempo" : "Tap \(tapTimes.count)")
+                                    .font(.title2)
+                                Text("Tap")
+                                    .font(.caption)
                             }
                             .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
+                            .padding(.vertical, 12)
                             .background(Color.softBlue.opacity(0.15))
                             .foregroundColor(.softBlue)
                             .cornerRadius(8)
@@ -197,14 +254,52 @@ struct MetronomeView: View {
                         Button(action: {
                             showingTempoDetectionSheet = true
                         }) {
-                            HStack {
+                            VStack(spacing: 4) {
                                 Image(systemName: "mic.fill")
-                                Text("Detect Tempo")
+                                    .font(.title2)
+                                Text("Detect")
+                                    .font(.caption)
                             }
                             .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
+                            .padding(.vertical, 12)
                             .background(Color.softGreen.opacity(0.15))
                             .foregroundColor(.softGreen)
+                            .cornerRadius(8)
+                        }
+                        
+                        Button(action: {
+                            showVolumeSheet()
+                        }) {
+                            VStack(spacing: 4) {
+                                Image(systemName: displayVolume == 0 ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                                    .font(.title2)
+                                    .foregroundColor(displayVolume == 0 ? .softRed : .softBlue)
+                                
+                                Text(displayVolume == 0 ? "Muted" : "\(Int(displayVolume * 100))%")
+                                    .font(.caption)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(Color.softBlue.opacity(0.15))
+                            .foregroundColor(displayVolume == 0 ? .softRed : .softBlue)
+                            .cornerRadius(8)
+                        }
+                        
+                        Button(action: {
+                            displayHapticEnabled.toggle()
+                            metronomeManager.isHapticFeedbackEnabled = displayHapticEnabled
+                            triggerHapticFeedback()
+                        }) {
+                            VStack(spacing: 4) {
+                                Image(systemName: displayHapticEnabled ? "iphone.radiowaves.left.and.right" : "iphone.slash")
+                                    .font(.title2)
+                                Text("Haptic")
+                                    .font(.caption)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(Color.softBlue.opacity(0.15))
+                            .foregroundColor(displayHapticEnabled ? .softBlue : .softGray)
                             .cornerRadius(8)
                         }
                     }
@@ -298,93 +393,21 @@ struct MetronomeView: View {
                 }
                 
                 HStack(spacing: 20) {
-                    Button(metronomeManager.isPlaying ? "Stop" : "Start") {
+                    Button(action: {
                         metronomeManager.toggleMetronome()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .font(.title2)
-                    
-                    Button(action: {
-                        showVolumeSheet()
                     }) {
-                        VStack(spacing: 2) {
-                            Image(systemName: displayVolume == 0 ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                                .font(.title2)
-                                .foregroundColor(displayVolume == 0 ? .softRed : .softBlue)
-                            
-                            if displayVolume > 0 {
-                                Text("\(Int(displayVolume * 100))%")
-                                    .font(.caption2)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    
-                    Button(action: {
-                        displayHapticEnabled.toggle()
-                        metronomeManager.isHapticFeedbackEnabled = displayHapticEnabled
-                        triggerHapticFeedback()
-                    }) {
-                        Image(systemName: displayHapticEnabled ? "iphone.radiowaves.left.and.right" : "iphone.slash")
-                            .font(.title2)
-                            .foregroundColor(displayHapticEnabled ? .softBlue : .softGray)
-                    }
-                    .buttonStyle(.bordered)
-                }
-                
-                VStack {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: min(beatsPerBar, 8)), spacing: 12) {
-                        ForEach(1...beatsPerBar, id: \.self) { beat in
-                            Button(action: {
-                                toggleBeatState(beat: beat)
-                            }) {
-                                Circle()
-                                    .fill(beatIndicatorColor(for: beat))
-                                    .frame(width: beatIndicatorSize, height: beatIndicatorSize)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(beatIndicatorBorder(for: beat), lineWidth: 3)
-                                    )
-                                    .overlay(
-                                        beatIndicatorIcon(for: beat)
-                                    )
-                                    .overlay(
-                                        Text("\(beat)")
-                                            .font(.caption2)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(beatIndicatorTextColor(for: beat))
-                                    )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .scaleEffect(metronomeManager.isPlaying && metronomeManager.beatCount == beat ? 1.2 : 1.0)
-                            .animation(.easeInOut(duration: 0.1), value: metronomeManager.beatCount)
-                        }
-                    }
-                    
-                    if metronomeManager.isPlaying {
                         VStack(spacing: 4) {
-                            Text("Bar \(metronomeManager.barCount), Beat \(metronomeManager.beatCount)")
+                            Image(systemName: metronomeManager.isPlaying ? "stop.fill" : "play.fill")
+                                .font(.title)
+                            Text(metronomeManager.isPlaying ? "Stop" : "Start")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
-                            
-                            if isGapTrainerEnabled {
-                                Text(gapTrainerInNormalPhase ? "Normal (\(gapTrainerCurrentCycle)/\(gapTrainerNormalBars))" : "Muted (\(gapTrainerCurrentCycle)/\(gapTrainerMutedBars))")
-                                    .font(.caption2)
-                                    .foregroundColor(gapTrainerInNormalPhase ? .softBlue : .softOrange)
-                                    .fontWeight(.medium)
-                            }
-                            
-                            if isTempoChangerEnabled {
-                                let barsCompleted = metronomeManager.barCount - tempoChangerStartingBar
-                                let nextIncreaseIn = tempoChangerBarInterval - (barsCompleted % tempoChangerBarInterval)
-                                Text("Tempo +\(tempoChangerBPMIncrement) in \(nextIncreaseIn) bars")
-                                    .font(.caption2)
-                                    .foregroundColor(.softGreen)
-                                    .fontWeight(.medium)
-                            }
+                                .fontWeight(.medium)
                         }
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 16)
+                        .background(Color.accentColor)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
                     }
                 }
                 
