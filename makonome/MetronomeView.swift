@@ -166,21 +166,38 @@ struct MetronomeView: View {
                 VStack {
                     HStack(spacing: 20) {
                         Button(action: {
+                            decrementBPMByFive()
+                        }) {
+                            Text("-5")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.softBlue)
+                                .frame(width: 32, height: 32)
+                                .background(Color.softBlue.opacity(0.15))
+                                .clipShape(Circle())
+                        }
+                        .disabled(bpm <= 45)
+                        
+                        Button(action: {
                             decrementBPM()
                         }) {
-                            Image(systemName: "minus.circle.fill")
-                                .font(.title)
+                            Text("-1")
+                                .font(.body)
+                                .fontWeight(.semibold)
                                 .foregroundColor(.softBlue)
+                                .frame(width: 40, height: 40)
+                                .background(Color.softBlue.opacity(0.15))
+                                .clipShape(Circle())
                         }
                         .disabled(bpm <= 40)
                         
                         Group {
                             if isEditingBPM {
                                 TextField("BPM", text: $bpmInputText)
-                                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                                    .font(.system(size: 24, weight: .bold, design: .rounded))
                                     .monospacedDigit()
                                     .multilineTextAlignment(.center)
-                                    .frame(minWidth: 180)
+                                    .frame(minWidth: 90)
                                     .keyboardType(.numberPad)
                                     .focused($isBPMInputFocused)
                                     .onSubmit {
@@ -201,9 +218,9 @@ struct MetronomeView: View {
                                     .transition(.opacity.combined(with: .scale))
                             } else {
                                 Text("\(Int(bpm)) BPM")
-                                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                                    .font(.system(size: 24, weight: .bold, design: .rounded))
                                     .monospacedDigit()
-                                    .frame(minWidth: 180)
+                                    .frame(minWidth: 90)
                                     .onTapGesture {
                                         startBPMEditing()
                                     }
@@ -215,11 +232,28 @@ struct MetronomeView: View {
                         Button(action: {
                             incrementBPM()
                         }) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.title)
+                            Text("+1")
+                                .font(.body)
+                                .fontWeight(.semibold)
                                 .foregroundColor(.softBlue)
+                                .frame(width: 40, height: 40)
+                                .background(Color.softBlue.opacity(0.15))
+                                .clipShape(Circle())
                         }
                         .disabled(bpm >= 400)
+                        
+                        Button(action: {
+                            incrementBPMByFive()
+                        }) {
+                            Text("+5")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.softBlue)
+                                .frame(width: 32, height: 32)
+                                .background(Color.softBlue.opacity(0.15))
+                                .clipShape(Circle())
+                        }
+                        .disabled(bpm >= 395)
                     }
                     
                     Slider(value: $bpm, in: 40...400, step: 1)
@@ -581,6 +615,22 @@ struct MetronomeView: View {
     private func decrementBPM() {
         if bpm > 40 {
             bpm -= 1
+            triggerHapticFeedback()
+            metronomeManager.bpm = bpm
+        }
+    }
+    
+    private func incrementBPMByFive() {
+        if bpm <= 395 {
+            bpm += 5
+            triggerHapticFeedback()
+            metronomeManager.bpm = bpm
+        }
+    }
+    
+    private func decrementBPMByFive() {
+        if bpm >= 45 {
+            bpm -= 5
             triggerHapticFeedback()
             metronomeManager.bpm = bpm
         }
