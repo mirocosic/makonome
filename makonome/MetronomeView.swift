@@ -234,7 +234,7 @@ struct MetronomeView: View {
                     // SimpleBPMScrollWheel(bpm: $bpm)
                     //     .padding(.horizontal)
                     
-                    HStack(spacing: 12) {
+                    HStack {
                         Button(action: {
                             handleTapTempo()
                         }) {
@@ -244,12 +244,14 @@ struct MetronomeView: View {
                                 Text("Tap")
                                     .font(.caption)
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
                             .background(Color.softBlue.opacity(0.15))
                             .foregroundColor(.softBlue)
                             .cornerRadius(8)
                         }
+                        
+                        Spacer()
                         
                         Button(action: {
                             showingTempoDetectionSheet = true
@@ -260,12 +262,33 @@ struct MetronomeView: View {
                                 Text("Detect")
                                     .font(.caption)
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
                             .background(Color.softGreen.opacity(0.15))
                             .foregroundColor(.softGreen)
                             .cornerRadius(8)
                         }
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            metronomeManager.toggleMetronome()
+                        }) {
+                            VStack(spacing: 4) {
+                                Image(systemName: metronomeManager.isPlaying ? "stop.fill" : "play.fill")
+                                    .font(.title)
+                                Text(metronomeManager.isPlaying ? "Stop" : "Start")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(Color.accentColor)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                        }
+                        
+                        Spacer()
                         
                         Button(action: {
                             showVolumeSheet()
@@ -278,12 +301,14 @@ struct MetronomeView: View {
                                 Text(displayVolume == 0 ? "Muted" : "\(Int(displayVolume * 100))%")
                                     .font(.caption)
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
                             .background(Color.softBlue.opacity(0.15))
                             .foregroundColor(displayVolume == 0 ? .softRed : .softBlue)
                             .cornerRadius(8)
                         }
+                        
+                        Spacer()
                         
                         Button(action: {
                             displayHapticEnabled.toggle()
@@ -296,8 +321,8 @@ struct MetronomeView: View {
                                 Text("Haptic")
                                     .font(.caption)
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
                             .background(Color.softBlue.opacity(0.15))
                             .foregroundColor(displayHapticEnabled ? .softBlue : .softGray)
                             .cornerRadius(8)
@@ -392,24 +417,6 @@ struct MetronomeView: View {
                     .disabled(metronomeManager.isPlaying)
                 }
                 
-                HStack(spacing: 20) {
-                    Button(action: {
-                        metronomeManager.toggleMetronome()
-                    }) {
-                        VStack(spacing: 4) {
-                            Image(systemName: metronomeManager.isPlaying ? "stop.fill" : "play.fill")
-                                .font(.title)
-                            Text(metronomeManager.isPlaying ? "Stop" : "Start")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                        }
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 16)
-                        .background(Color.accentColor)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                    }
-                }
                 
                     Spacer()
                 }
