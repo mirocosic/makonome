@@ -12,36 +12,37 @@ struct SubdivisionPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        NavigationView {
-            VStack {
-                Picker("Subdivision", selection: $subdivision) {
-                    ForEach(NoteSubdivision.allCases, id: \.self) { subdivision in
-                        HStack {
-                            Text(subdivision.symbol)
-                            Text(subdivision.rawValue)
-                        }
-                        .tag(subdivision)
+        VStack(spacing: 20) {
+            // Drag indicator
+            RoundedRectangle(cornerRadius: 2.5)
+                .fill(Color.secondary.opacity(0.5))
+                .frame(width: 40, height: 5)
+                .padding(.top, 8)
+            
+            Text("Subdivision")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .padding(.top, 8)
+            
+            Picker("Subdivision", selection: $subdivision) {
+                ForEach(NoteSubdivision.allCases, id: \.self) { subdivision in
+                    HStack {
+                        Text(subdivision.symbol)
+                        Text(subdivision.rawValue)
                     }
-                }
-                .pickerStyle(.wheel)
-                .onChange(of: subdivision) { _, newValue in
-                    UserDefaults.standard.set(newValue.rawValue, forKey: "MetronomeSubdivision")
-                }
-                
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("Subdivision")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
+                    .tag(subdivision)
                 }
             }
+            .pickerStyle(.wheel)
+            .onChange(of: subdivision) { _, newValue in
+                UserDefaults.standard.set(newValue.rawValue, forKey: "MetronomeSubdivision")
+            }
+            
+            Spacer()
         }
+        .padding()
         .presentationDetents([.fraction(0.4)])
+        .presentationDragIndicator(.hidden)
     }
 }
 

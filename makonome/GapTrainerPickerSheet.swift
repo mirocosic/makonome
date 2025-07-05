@@ -14,78 +14,79 @@ struct GapTrainerPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                VStack {
-                    Toggle("Enable Gap Trainer", isOn: $isGapTrainerEnabled)
-                        .font(.headline)
-                        .onChange(of: isGapTrainerEnabled) { _, newValue in
-                            UserDefaults.standard.set(newValue, forKey: "GapTrainerEnabled")
-                        }
-                    
-                    if isGapTrainerEnabled {
-                        Text("Pattern: \(gapTrainerNormalBars) normal → \(gapTrainerMutedBars) muted → repeat")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 4)
+        VStack(spacing: 20) {
+            // Drag indicator
+            RoundedRectangle(cornerRadius: 2.5)
+                .fill(Color.secondary.opacity(0.5))
+                .frame(width: 40, height: 5)
+                .padding(.top, 8)
+            
+            Text("Gap Trainer")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .padding(.top, 8)
+            
+            VStack {
+                Toggle("Enable Gap Trainer", isOn: $isGapTrainerEnabled)
+                    .font(.headline)
+                    .onChange(of: isGapTrainerEnabled) { _, newValue in
+                        UserDefaults.standard.set(newValue, forKey: "GapTrainerEnabled")
                     }
-                }
-                .padding(.horizontal)
                 
                 if isGapTrainerEnabled {
-                    HStack(spacing: 40) {
-                        VStack {
-                            Text("Normal Bars")
-                                .font(.headline)
-                            
-                            Picker("Normal Bars", selection: $gapTrainerNormalBars) {
-                                ForEach(1...16, id: \.self) { bars in
-                                    Text("\(bars)")
-                                        .tag(bars)
-                                }
-                            }
-                            .pickerStyle(.wheel)
-                            .frame(height: 120)
-                            .clipped()
-                            .onChange(of: gapTrainerNormalBars) { _, newValue in
-                                UserDefaults.standard.set(newValue, forKey: "GapTrainerNormalBars")
-                            }
-                        }
+                    Text("Pattern: \(gapTrainerNormalBars) normal → \(gapTrainerMutedBars) muted → repeat")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 4)
+                }
+            }
+            .padding(.horizontal)
+            
+            if isGapTrainerEnabled {
+                HStack(spacing: 40) {
+                    VStack {
+                        Text("Normal Bars")
+                            .font(.headline)
                         
-                        VStack {
-                            Text("Muted Bars")
-                                .font(.headline)
-                            
-                            Picker("Muted Bars", selection: $gapTrainerMutedBars) {
-                                ForEach(1...16, id: \.self) { bars in
-                                    Text("\(bars)")
-                                        .tag(bars)
-                                }
+                        Picker("Normal Bars", selection: $gapTrainerNormalBars) {
+                            ForEach(1...16, id: \.self) { bars in
+                                Text("\(bars)")
+                                    .tag(bars)
                             }
-                            .pickerStyle(.wheel)
-                            .frame(height: 120)
-                            .clipped()
-                            .onChange(of: gapTrainerMutedBars) { _, newValue in
-                                UserDefaults.standard.set(newValue, forKey: "GapTrainerMutedBars")
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(height: 120)
+                        .clipped()
+                        .onChange(of: gapTrainerNormalBars) { _, newValue in
+                            UserDefaults.standard.set(newValue, forKey: "GapTrainerNormalBars")
+                        }
+                    }
+                    
+                    VStack {
+                        Text("Muted Bars")
+                            .font(.headline)
+                        
+                        Picker("Muted Bars", selection: $gapTrainerMutedBars) {
+                            ForEach(1...16, id: \.self) { bars in
+                                Text("\(bars)")
+                                    .tag(bars)
                             }
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(height: 120)
+                        .clipped()
+                        .onChange(of: gapTrainerMutedBars) { _, newValue in
+                            UserDefaults.standard.set(newValue, forKey: "GapTrainerMutedBars")
                         }
                     }
                 }
-                
-                Spacer()
             }
-            .padding()
-            .navigationTitle("Gap Trainer")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
+            
+            Spacer()
         }
+        .padding()
         .presentationDetents([.fraction(0.5)])
+        .presentationDragIndicator(.hidden)
     }
 }
 
