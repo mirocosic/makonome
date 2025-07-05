@@ -17,7 +17,7 @@ struct TempoDetectionView: View {
                     HStack {
                         Image(systemName: "mic.fill")
                             .font(.title2)
-                            .foregroundColor(.blue)
+                            .foregroundColor(.softBlue)
                         Text("Tempo Detection")
                             .font(.title2)
                             .fontWeight(.semibold)
@@ -91,8 +91,8 @@ struct TempoDetectionView: View {
                                 .font(.caption)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(Color.blue.opacity(0.1))
-                                .foregroundColor(.blue)
+                                .background(Color.softBlue.opacity(0.15))
+                                .foregroundColor(.softBlue)
                                 .cornerRadius(8)
                             }
                             
@@ -125,8 +125,8 @@ struct TempoDetectionView: View {
                                 .font(.caption)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(Color.orange.opacity(0.1))
-                                .foregroundColor(.orange)
+                                .background(Color.softOrange.opacity(0.15))
+                                .foregroundColor(.softOrange)
                                 .cornerRadius(8)
                             }
                             
@@ -163,7 +163,7 @@ struct TempoDetectionView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(detectionEngine.isDetecting ? Color.red : Color.blue)
+                        .background(detectionEngine.isDetecting ? Color.softRed : Color.softBlue)
                         .foregroundColor(.white)
                         .cornerRadius(16)
                     }
@@ -183,7 +183,7 @@ struct TempoDetectionView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(Color.green)
+                            .background(Color.softGreen)
                             .foregroundColor(.white)
                             .cornerRadius(16)
                         }
@@ -212,11 +212,11 @@ struct TempoDetectionView: View {
     private var audioLevelColor: Color {
         let level = detectionEngine.audioLevel
         if level < 0.3 {
-            return .green
+            return .softGreen
         } else if level < 0.7 {
-            return .yellow
+            return .softYellow
         } else {
-            return .red
+            return .softRed
         }
     }
     
@@ -225,9 +225,9 @@ struct TempoDetectionView: View {
         let threshold = Double(index + 1) * 0.2
         
         if confidence >= threshold {
-            return .green
+            return .softGreen
         } else {
-            return .gray.opacity(0.3)
+            return .softGray.opacity(0.3)
         }
     }
     

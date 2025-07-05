@@ -12,7 +12,11 @@ struct SettingsView: View {
     
     var body: some View {
         NavigationView {
-            Form {
+            ZStack {
+                Color.softBackground
+                    .ignoresSafeArea()
+                
+                Form {
                 Section {
                     HStack {
                         Image(systemName: "clock.fill")
@@ -181,12 +185,12 @@ struct SettingsView: View {
                     if notificationManager.permissionDenied {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
+                                .foregroundColor(.softOrange)
                                 .frame(width: 20)
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Notifications disabled")
-                                    .foregroundColor(.orange)
+                                    .foregroundColor(.softOrange)
                                 Text("Enable notifications in Settings to receive practice reminders")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -198,7 +202,7 @@ struct SettingsView: View {
                                 UIApplication.shared.open(settingsUrl)
                             }
                         }
-                        .foregroundColor(.blue)
+                        .foregroundColor(.softBlue)
                     }
                 } header: {
                     Text("Practice Reminders")
@@ -239,14 +243,14 @@ struct SettingsView: View {
                         }) {
                             HStack {
                                 Image(systemName: sendingTestNotification ? "arrow.triangle.2.circlepath" : "bell.badge.fill")
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(.softBlue)
                                     .frame(width: 20)
                                     .rotationEffect(.degrees(sendingTestNotification ? 360 : 0))
                                     .animation(sendingTestNotification ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: sendingTestNotification)
                                 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(sendingTestNotification ? "Sending..." : "Send test notification")
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(.softBlue)
                                     Text("Trigger a test notification immediately")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
@@ -261,11 +265,14 @@ struct SettingsView: View {
                     Text("Developer")
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.softBackground)
             .navigationTitle("Settings")
             .onAppear {
                 Task {
                     await notificationManager.checkPermissionStatus()
                 }
+            }
             }
         }
     }

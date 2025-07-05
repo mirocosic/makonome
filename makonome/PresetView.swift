@@ -51,7 +51,7 @@ struct PresetView: View {
                     VStack(spacing: 16) {
                         Image(systemName: "music.note.list")
                             .font(.system(size: 48))
-                            .foregroundColor(.gray)
+                            .foregroundColor(.softGray)
                         Text("No presets yet")
                             .font(.title2)
                             .foregroundColor(.secondary)
@@ -209,7 +209,7 @@ struct PresetRowView: View {
                         HStack(spacing: 4) {
                             Image(systemName: "speaker.slash")
                                 .font(.caption)
-                                .foregroundColor(.orange)
+                                .foregroundColor(.softOrange)
                             Text("Beats \(mutedBeats.map(String.init).joined(separator: ", ")) muted")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -220,7 +220,7 @@ struct PresetRowView: View {
                         HStack(spacing: 4) {
                             Image(systemName: "star.fill")
                                 .font(.caption)
-                                .foregroundColor(.red)
+                                .foregroundColor(.softRed)
                             Text("Beats \(accentedBeats.map(String.init).joined(separator: ", ")) accented")
                                 .font(.caption)
                                 .foregroundColor(.secondary)

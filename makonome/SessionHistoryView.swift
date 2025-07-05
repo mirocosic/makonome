@@ -39,7 +39,11 @@ struct SessionHistoryView: View {
     
     var body: some View {
         NavigationView {
-            VStack {
+            ZStack {
+                Color.softBackground
+                    .ignoresSafeArea()
+                
+                VStack {
                 if sessionManager.sessions.isEmpty {
                     // Empty state
                     VStack(spacing: 20) {
@@ -133,6 +137,7 @@ struct SessionHistoryView: View {
             }
             .navigationTitle("Practice History")
             .navigationBarTitleDisplayMode(.inline)
+            }
         }
     }
     

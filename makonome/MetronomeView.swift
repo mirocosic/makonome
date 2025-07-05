@@ -102,6 +102,9 @@ struct MetronomeView: View {
     var body: some View {
         NavigationView {
             ZStack {
+                Color.softBackground
+                    .ignoresSafeArea()
+                
                 GeometryReader { geometry in
                     VStack(spacing: 30) {
                 
@@ -112,7 +115,7 @@ struct MetronomeView: View {
                         }) {
                             Image(systemName: "minus.circle.fill")
                                 .font(.title)
-                                .foregroundColor(.blue)
+                                .foregroundColor(.softBlue)
                         }
                         .disabled(bpm <= 40)
                         
@@ -159,7 +162,7 @@ struct MetronomeView: View {
                         }) {
                             Image(systemName: "plus.circle.fill")
                                 .font(.title)
-                                .foregroundColor(.blue)
+                                .foregroundColor(.softBlue)
                         }
                         .disabled(bpm >= 400)
                     }
@@ -186,8 +189,8 @@ struct MetronomeView: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(Color.blue.opacity(0.1))
-                            .foregroundColor(.blue)
+                            .background(Color.softBlue.opacity(0.15))
+                            .foregroundColor(.softBlue)
                             .cornerRadius(8)
                         }
                         
@@ -200,8 +203,8 @@ struct MetronomeView: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(Color.green.opacity(0.1))
-                            .foregroundColor(.green)
+                            .background(Color.softGreen.opacity(0.15))
+                            .foregroundColor(.softGreen)
                             .cornerRadius(8)
                         }
                     }
@@ -223,7 +226,7 @@ struct MetronomeView: View {
                                 }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
-                                .background(Color.gray.opacity(0.2))
+                                .background(Color.softGray.opacity(0.2))
                                 .cornerRadius(8)
                             }
                             .disabled(metronomeManager.isPlaying)
@@ -246,7 +249,7 @@ struct MetronomeView: View {
                                 }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
-                                .background(Color.gray.opacity(0.2))
+                                .background(Color.softGray.opacity(0.2))
                                 .cornerRadius(8)
                             }
                             .disabled(metronomeManager.isPlaying)
@@ -274,7 +277,7 @@ struct MetronomeView: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(isGapTrainerEnabled ? Color.blue.opacity(0.2) : Color.gray.opacity(0.2))
+                            .background(isGapTrainerEnabled ? Color.softBlue.opacity(0.2) : Color.softGray.opacity(0.2))
                             .cornerRadius(8)
                         }
                         .disabled(metronomeManager.isPlaying)
@@ -305,7 +308,7 @@ struct MetronomeView: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(isTempoChangerEnabled ? Color.green.opacity(0.2) : Color.gray.opacity(0.2))
+                            .background(isTempoChangerEnabled ? Color.softGreen.opacity(0.2) : Color.softGray.opacity(0.2))
                             .cornerRadius(8)
                         }
                         .disabled(metronomeManager.isPlaying)
@@ -332,7 +335,7 @@ struct MetronomeView: View {
                         VStack(spacing: 2) {
                             Image(systemName: displayVolume == 0 ? "speaker.slash.fill" : "speaker.wave.2.fill")
                                 .font(.title2)
-                                .foregroundColor(displayVolume == 0 ? .red : .blue)
+                                .foregroundColor(displayVolume == 0 ? .softRed : .softBlue)
                             
                             if displayVolume > 0 {
                                 Text("\(Int(displayVolume * 100))%")
@@ -351,7 +354,7 @@ struct MetronomeView: View {
                     }) {
                         Image(systemName: displayHapticEnabled ? "iphone.radiowaves.left.and.right" : "iphone.slash")
                             .font(.title2)
-                            .foregroundColor(displayHapticEnabled ? .blue : .gray)
+                            .foregroundColor(displayHapticEnabled ? .softBlue : .softGray)
                     }
                     .buttonStyle(.bordered)
                 }
@@ -394,7 +397,7 @@ struct MetronomeView: View {
                             if isGapTrainerEnabled {
                                 Text(gapTrainerInNormalPhase ? "Normal (\(gapTrainerCurrentCycle)/\(gapTrainerNormalBars))" : "Muted (\(gapTrainerCurrentCycle)/\(gapTrainerMutedBars))")
                                     .font(.caption2)
-                                    .foregroundColor(gapTrainerInNormalPhase ? .blue : .orange)
+                                    .foregroundColor(gapTrainerInNormalPhase ? .softBlue : .softOrange)
                                     .fontWeight(.medium)
                             }
                             
@@ -403,7 +406,7 @@ struct MetronomeView: View {
                                 let nextIncreaseIn = tempoChangerBarInterval - (barsCompleted % tempoChangerBarInterval)
                                 Text("Tempo +\(tempoChangerBPMIncrement) in \(nextIncreaseIn) bars")
                                     .font(.caption2)
-                                    .foregroundColor(.green)
+                                    .foregroundColor(.softGreen)
                                     .fontWeight(.medium)
                             }
                         }
@@ -457,9 +460,9 @@ struct MetronomeView: View {
         // Gap trainer muted phase overrides everything
         if isGapTrainerEnabled && !gapTrainerInNormalPhase && metronomeManager.isPlaying {
             if metronomeManager.beatCount == beat {
-                return Color.orange.opacity(0.8) // Muted phase active beat
+                return Color.softOrange.opacity(0.8) // Muted phase active beat
             } else {
-                return Color.gray.opacity(0.4) // Muted phase inactive beats
+                return Color.softGray.opacity(0.4) // Muted phase inactive beats
             }
         }
         
@@ -467,18 +470,18 @@ struct MetronomeView: View {
         
         switch beatState {
         case .muted:
-            return Color.gray.opacity(0.6)
+            return Color.softGray.opacity(0.6)
         case .accented:
             if metronomeManager.isPlaying && metronomeManager.beatCount == beat {
-                return Color.red.opacity(0.9)
+                return Color.softRed.opacity(0.9)
             } else {
-                return Color.red.opacity(0.4)
+                return Color.softRed.opacity(0.4)
             }
         case .normal:
             if metronomeManager.isPlaying && metronomeManager.beatCount == beat {
-                return Color.blue.opacity(0.9)
+                return Color.softBlue.opacity(0.9)
             } else {
-                return Color.gray.opacity(0.3)
+                return Color.softGray.opacity(0.3)
             }
         }
     }
@@ -487,7 +490,7 @@ struct MetronomeView: View {
         let beatState = beatStates[beat] ?? .normal
         switch beatState {
         case .accented:
-            return Color.red.opacity(0.8)
+            return Color.softRed.opacity(0.8)
         default:
             return Color.clear
         }
@@ -689,7 +692,7 @@ struct VolumeControlSheet: View {
                         generator.impactOccurred()
                     }
                 ), in: 0.0...1.0)
-                .accentColor(.blue)
+                .accentColor(.softBlue)
                 
                 Image(systemName: "speaker.wave.3.fill")
                     .foregroundColor(.secondary)

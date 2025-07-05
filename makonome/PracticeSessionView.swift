@@ -16,7 +16,12 @@ struct PracticeSessionView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 30) {
+            ZStack {
+                Color.softBackground
+                    .ignoresSafeArea()
+                
+                GeometryReader { geometry in
+                    VStack(spacing: 30) {
                 if let currentSession = sessionManager.currentSession {
                     // Active session view
                     VStack(spacing: 20) {
@@ -32,7 +37,7 @@ struct PracticeSessionView: View {
                         if let targetDuration = currentSession.targetDuration {
                             VStack(spacing: 8) {
                                 ProgressView(value: min(currentSession.duration, targetDuration), total: targetDuration)
-                                    .progressViewStyle(LinearProgressViewStyle(tint: currentSession.isGoalMet ? .green : .blue))
+                                    .progressViewStyle(LinearProgressViewStyle(tint: currentSession.isGoalMet ? .softGreen : .softBlue))
                                     .scaleEffect(x: 1, y: 2, anchor: .center)
                                 
                                 HStack {
@@ -45,11 +50,11 @@ struct PracticeSessionView: View {
                                     if currentSession.isGoalMet {
                                         HStack {
                                             Image(systemName: "checkmark.circle.fill")
-                                                .foregroundColor(.green)
+                                                .foregroundColor(.softGreen)
                                             Text("Goal Met!")
                                         }
                                         .font(.caption)
-                                        .foregroundColor(.green)
+                                        .foregroundColor(.softGreen)
                                     } else {
                                         Text("\(sessionManager.formatTime(targetDuration - currentSession.duration)) remaining")
                                             .font(.caption)
@@ -133,9 +138,12 @@ struct PracticeSessionView: View {
                 }
                 
                 Spacer()
+                    }
+                    .padding()
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                }
             }
             .navigationTitle("Practice")
-            .padding()
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink(destination: SessionHistoryView()) {
@@ -186,7 +194,11 @@ struct SessionSetupView: View {
     
     var body: some View {
         NavigationView {
-            Form {
+            ZStack {
+                Color.softBackground
+                    .ignoresSafeArea()
+                
+                Form {
                 Section("Session Details") {
                     TextField("Session Name", text: $sessionName)
                 }
@@ -250,6 +262,8 @@ struct SessionSetupView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.softBackground)
             .navigationTitle("New Session")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
@@ -268,6 +282,7 @@ struct SessionSetupView: View {
                     }
                     .disabled(sessionName.isEmpty)
                 }
+            }
             }
         }
     }
