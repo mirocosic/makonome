@@ -210,116 +210,91 @@ struct MetronomeView: View {
                     }
                 }
                 
-                VStack(spacing: 20) {
-                    HStack(spacing: 40) {
-                        VStack {
-                            Text("Subdivision")
-                                .font(.headline)
+                HStack(spacing: 20) {
+                    // Current settings display
+                    VStack(spacing: 8) {
+                        HStack(spacing: 16) {
+                            HStack(spacing: 4) {
+                                Text(subdivision.symbol)
+                                Text(subdivision.rawValue)
+                            }
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                             
-                            Button(action: {
-                                showingSubdivisionPicker = true
-                            }) {
-                                HStack {
-                                    Text(subdivision.symbol)
-                                    Text(subdivision.rawValue)
-                                    Image(systemName: "chevron.down")
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color.softGray.opacity(0.2))
-                                .cornerRadius(8)
+                            Text("•")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            HStack(spacing: 4) {
+                                Text("\(beatsPerBar)")
+                                Text(beatsPerBar == 1 ? "beat" : "beats")
                             }
-                            .disabled(metronomeManager.isPlaying)
-                            .sheet(isPresented: $showingSubdivisionPicker) {
-                                SubdivisionPickerSheet(subdivision: $subdivision)
-                            }
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                         }
                         
-                        VStack {
-                            Text("Beats Per Bar")
-                                .font(.headline)
-                            
-                            Button(action: {
-                                showingBeatsPerBarPicker = true
-                            }) {
-                                HStack {
-                                    Text("\(beatsPerBar)")
-                                    Text(beatsPerBar == 1 ? "beat" : "beats")
-                                    Image(systemName: "chevron.down")
+                        HStack(spacing: 16) {
+                            if isGapTrainerEnabled {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "pause.circle.fill")
+                                        .font(.caption2)
+                                    Text("Gap: \(gapTrainerNormalBars):\(gapTrainerMutedBars)")
                                 }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color.softGray.opacity(0.2))
-                                .cornerRadius(8)
+                                .font(.caption)
+                                .foregroundColor(.softBlue)
                             }
-                            .disabled(metronomeManager.isPlaying)
-                            .sheet(isPresented: $showingBeatsPerBarPicker) {
-                                BeatsPerBarPickerSheet(beatsPerBar: $beatsPerBar, cleanupMutedBeats: cleanupBeatStates)
+                            
+                            if isTempoChangerEnabled {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "speedometer")
+                                        .font(.caption2)
+                                    Text("Tempo: +\(tempoChangerBPMIncrement)/\(tempoChangerBarInterval)")
+                                }
+                                .font(.caption)
+                                .foregroundColor(.softGreen)
                             }
                         }
                     }
                     
-                    VStack {
-                        Text("Gap Trainer")
-                            .font(.headline)
+                    Spacer()
+                    
+                    // More options button
+                    Menu {
+                        Button(action: {
+                            showingSubdivisionPicker = true
+                        }) {
+                            Label("Subdivision (\(subdivision.symbol) \(subdivision.rawValue))", systemImage: "music.note")
+                        }
+                        .disabled(metronomeManager.isPlaying)
+                        
+                        Button(action: {
+                            showingBeatsPerBarPicker = true
+                        }) {
+                            Label("Beats Per Bar (\(beatsPerBar))", systemImage: "metronome")
+                        }
+                        .disabled(metronomeManager.isPlaying)
+                        
+                        Divider()
                         
                         Button(action: {
                             showingGapTrainerPicker = true
                         }) {
-                            HStack {
-                                Image(systemName: isGapTrainerEnabled ? "pause.circle.fill" : "pause.circle")
-                                if isGapTrainerEnabled {
-                                    Text("\(gapTrainerNormalBars) normal, \(gapTrainerMutedBars) muted")
-                                } else {
-                                    Text("Off")
-                                }
-                                Image(systemName: "chevron.down")
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(isGapTrainerEnabled ? Color.softBlue.opacity(0.2) : Color.softGray.opacity(0.2))
-                            .cornerRadius(8)
+                            Label("Gap Trainer (\(isGapTrainerEnabled ? "On" : "Off"))", systemImage: isGapTrainerEnabled ? "pause.circle.fill" : "pause.circle")
                         }
                         .disabled(metronomeManager.isPlaying)
-                        .sheet(isPresented: $showingGapTrainerPicker) {
-                            GapTrainerPickerSheet(
-                                isGapTrainerEnabled: $isGapTrainerEnabled,
-                                gapTrainerNormalBars: $gapTrainerNormalBars,
-                                gapTrainerMutedBars: $gapTrainerMutedBars
-                            )
-                        }
-                    }
-                    
-                    VStack {
-                        Text("Tempo Changer")
-                            .font(.headline)
                         
                         Button(action: {
                             showingTempoChangerPicker = true
                         }) {
-                            HStack {
-                                Image(systemName: isTempoChangerEnabled ? "speedometer" : "speedometer")
-                                if isTempoChangerEnabled {
-                                    Text("+\(tempoChangerBPMIncrement) every \(tempoChangerBarInterval) bars")
-                                } else {
-                                    Text("Off")
-                                }
-                                Image(systemName: "chevron.down")
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(isTempoChangerEnabled ? Color.softGreen.opacity(0.2) : Color.softGray.opacity(0.2))
-                            .cornerRadius(8)
+                            Label("Tempo Changer (\(isTempoChangerEnabled ? "On" : "Off"))", systemImage: "speedometer")
                         }
                         .disabled(metronomeManager.isPlaying)
-                        .sheet(isPresented: $showingTempoChangerPicker) {
-                            TempoChangerPickerSheet(
-                                isTempoChangerEnabled: $isTempoChangerEnabled,
-                                tempoChangerBPMIncrement: $tempoChangerBPMIncrement,
-                                tempoChangerBarInterval: $tempoChangerBarInterval
-                            )
-                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.softBlue)
                     }
+                    .disabled(metronomeManager.isPlaying)
                 }
                 
                 HStack(spacing: 20) {
@@ -445,6 +420,26 @@ struct MetronomeView: View {
             }
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showingSubdivisionPicker) {
+            SubdivisionPickerSheet(subdivision: $subdivision)
+        }
+        .sheet(isPresented: $showingBeatsPerBarPicker) {
+            BeatsPerBarPickerSheet(beatsPerBar: $beatsPerBar, cleanupMutedBeats: cleanupBeatStates)
+        }
+        .sheet(isPresented: $showingGapTrainerPicker) {
+            GapTrainerPickerSheet(
+                isGapTrainerEnabled: $isGapTrainerEnabled,
+                gapTrainerNormalBars: $gapTrainerNormalBars,
+                gapTrainerMutedBars: $gapTrainerMutedBars
+            )
+        }
+        .sheet(isPresented: $showingTempoChangerPicker) {
+            TempoChangerPickerSheet(
+                isTempoChangerEnabled: $isTempoChangerEnabled,
+                tempoChangerBPMIncrement: $tempoChangerBPMIncrement,
+                tempoChangerBarInterval: $tempoChangerBarInterval
+            )
         }
         .onAppear {
             displayVolume = metronomeManager.volume
