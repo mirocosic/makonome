@@ -9,7 +9,7 @@ struct CircularPicker: View {
     private let minValue: Double = 40
     private let maxValue: Double = 400
     private let radius: CGFloat = 120
-    private let lineWidth: CGFloat = 8
+    private let lineWidth: CGFloat = 20
     
     var body: some View {
         GeometryReader { geometry in
@@ -24,15 +24,15 @@ struct CircularPicker: View {
                     .stroke(Color.softGray.opacity(0.3), lineWidth: lineWidth)
                     .frame(width: radius * 2, height: radius * 2)
                 
-                // Progress arc
-                Circle()
-                    .trim(from: 0, to: progressValue)
-                    .stroke(
-                        Color.softBlue,
-                        style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
-                    )
-                    .frame(width: radius * 2, height: radius * 2)
-                    .rotationEffect(.degrees(-90))
+                // Progress arc (hidden)
+                // Circle()
+                //     .trim(from: 0, to: progressValue)
+                //     .stroke(
+                //         Color.softBlue,
+                //         style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+                //     )
+                //     .frame(width: radius * 2, height: radius * 2)
+                //     .rotationEffect(.degrees(-90))
                 
                 // Tick marks
                 ForEach(tickMarks, id: \.value) { tick in
@@ -43,6 +43,7 @@ struct CircularPicker: View {
                         color: tick.color
                     )
                 }
+                .rotationEffect(.radians(currentAngle - .pi / 2))
                 
                 // Center value display
                 VStack(spacing: 4) {
@@ -55,11 +56,11 @@ struct CircularPicker: View {
                         .foregroundColor(.secondary)
                 }
                 
-                // Drag handle
-                Circle()
-                    .fill(Color.softBlue)
-                    .frame(width: 24, height: 24)
-                    .offset(x: cos(currentAngle) * radius, y: sin(currentAngle) * radius)
+                // Drag handle (hidden)
+                // Circle()
+                //     .fill(Color.softBlue)
+                //     .frame(width: 24, height: 24)
+                //     .offset(x: cos(currentAngle) * radius, y: sin(currentAngle) * radius)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .position(center)
@@ -169,7 +170,7 @@ struct TickMark: View {
         Rectangle()
             .fill(color)
             .frame(width: 2, height: height)
-            .offset(y: -radius - height/2)
+            .offset(y: -radius + 10 - height/2)  // Move inside to align with inner edge of path
             .rotationEffect(.radians(angle))
     }
 }
