@@ -5,6 +5,7 @@ struct CircularPicker: View {
     @State private var isDragging = false
     @State private var lastAngle: Double = 0
     @State private var isFirstDrag = true
+    @State private var hapticCounter = 0
     
     private let minValue: Double = 40
     private let maxValue: Double = 400
@@ -137,16 +138,21 @@ struct CircularPicker: View {
             angleDiff += 2 * .pi
         }
         
-        let sensitivity = 0.5
+        let sensitivity = 0.35
         let valueChange = angleDiff * sensitivity * (maxValue - minValue) / (2 * .pi)
         let newValue = max(minValue, min(maxValue, value + valueChange))
         
         if abs(newValue - value) > 0.1 {
+            let oldIntegerValue = Int(value)
+            let newIntegerValue = Int(newValue)
+            
             value = newValue
             
-            // Haptic feedback
-            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-            impactFeedback.impactOccurred()
+            // Trigger haptic when crossing integer BPM boundaries
+            if oldIntegerValue != newIntegerValue {
+                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                impactFeedback.impactOccurred()
+            }
         }
         
         lastAngle = normalizedAngle
