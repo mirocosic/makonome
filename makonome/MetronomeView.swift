@@ -87,7 +87,6 @@ struct MetronomeView: View {
     @State private var showingTempoDetectionSheet = false
     @State private var displayVolume: Float = 0.8
     @State private var displayHapticEnabled = false
-    @State private var circularPickerValue: Double = 120
     
     
     var beatIndicatorSize: CGFloat {
@@ -167,22 +166,9 @@ struct MetronomeView: View {
                 VStack {
                     HStack(spacing: 20) {
                         Button(action: {
-                            decrementBPMByFive()
-                        }) {
-                            Text("-5")
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.softBlue)
-                                .frame(width: 32, height: 32)
-                                .background(Color.softBlue.opacity(0.15))
-                                .clipShape(Circle())
-                        }
-                        .disabled(bpm <= 45)
-                        
-                        Button(action: {
                             decrementBPM()
                         }) {
-                            Text("-1")
+                            Text("-")
                                 .font(.body)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.softBlue)
@@ -233,7 +219,7 @@ struct MetronomeView: View {
                         Button(action: {
                             incrementBPM()
                         }) {
-                            Text("+1")
+                            Text("+")
                                 .font(.body)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.softBlue)
@@ -242,26 +228,13 @@ struct MetronomeView: View {
                                 .clipShape(Circle())
                         }
                         .disabled(bpm >= 400)
-                        
-                        Button(action: {
-                            incrementBPMByFive()
-                        }) {
-                            Text("+5")
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.softBlue)
-                                .frame(width: 32, height: 32)
-                                .background(Color.softBlue.opacity(0.15))
-                                .clipShape(Circle())
-                        }
-                        .disabled(bpm >= 395)
                     }
                     
-                    Slider(value: $bpm, in: 40...400, step: 1)
-                        .padding(.horizontal)
-                        .onChange(of: bpm) { _, _ in
-                            metronomeManager.bpm = bpm
-                        }
+                    // Slider(value: $bpm, in: 40...400, step: 1)
+                    //     .padding(.horizontal)
+                    //     .onChange(of: bpm) { _, _ in
+                    //         metronomeManager.bpm = bpm
+                    //     }
                     
                     // BPMScrollWheel(bpm: $bpm)
                     //     .padding(.horizontal)
@@ -269,9 +242,13 @@ struct MetronomeView: View {
                     // SimpleBPMScrollWheel(bpm: $bpm)
                     //     .padding(.horizontal)
                     
-                    // Circular Picker for testing (standalone)
-                    CircularPicker(value: $circularPickerValue)
+                    // Circular Picker (connected to BPM)
+                    CircularPicker(value: $bpm)
                         .padding(.horizontal)
+                        .onChange(of: bpm) { _, newBPM in
+                            metronomeManager.bpm = newBPM
+                            UserDefaults.standard.set(bpm, forKey: "MetronomeBPM")
+                        }
                     
                     HStack {
                         Button(action: {
