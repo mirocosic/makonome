@@ -4,6 +4,7 @@ struct CircularPicker: View {
     @Binding var value: Double
     @State private var isDragging = false
     @State private var lastAngle: Double = 0
+    @State private var isFirstDrag = true
     
     private let minValue: Double = 40
     private let maxValue: Double = 400
@@ -69,12 +70,14 @@ struct CircularPicker: View {
                     }
                     .onEnded { _ in
                         isDragging = false
+                        isFirstDrag = true  // Reset for next drag
                     }
             )
         }
         .frame(width: (radius + 40) * 2, height: (radius + 40) * 2)
         .onAppear {
             lastAngle = currentAngle
+            isFirstDrag = true
         }
     }
     
@@ -95,13 +98,12 @@ struct CircularPicker: View {
         for i in stride(from: minValue, through: maxValue, by: step) {
             let progress = (i - minValue) / valueRange
             let angle = progress * 2 * .pi - .pi / 2  // Start from top (12 o'clock)
-            let isMajor = Int(i) % 50 == 0
             
             marks.append(TickMarkData(
                 value: i,
                 angle: angle,
-                height: isMajor ? 20 : 12,
-                color: isMajor ? .softBlue : .softGray
+                height: 12,
+                color: .softGray
             ))
         }
         
@@ -119,8 +121,10 @@ struct CircularPicker: View {
         let angle = atan2(vector.y, vector.x) + .pi / 2  // Adjust for top starting position
         let normalizedAngle = angle < 0 ? angle + 2 * .pi : angle
         
-        if !isDragging {
+        if isFirstDrag {
             lastAngle = normalizedAngle
+            isFirstDrag = false
+            return  // Don't update value on first drag event
         }
         
         var angleDiff = normalizedAngle - lastAngle
