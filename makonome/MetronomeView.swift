@@ -87,6 +87,7 @@ struct MetronomeView: View {
     @State private var showingTempoDetectionSheet = false
     @State private var displayVolume: Float = 0.8
     @State private var displayHapticEnabled = false
+    @State private var circularPickerValue: Double = 120
     
     
     var beatIndicatorSize: CGFloat {
@@ -267,6 +268,10 @@ struct MetronomeView: View {
                     
                     // SimpleBPMScrollWheel(bpm: $bpm)
                     //     .padding(.horizontal)
+                    
+                    // Circular Picker for testing (standalone)
+                    CircularPicker(value: $circularPickerValue)
+                        .padding(.horizontal)
                     
                     HStack {
                         Button(action: {
